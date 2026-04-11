@@ -92,6 +92,13 @@ export interface AvailabilityCheck {
   reason?: string;
 }
 
+export interface ProjectMemberOut {
+  user_id: number;
+  email?: string | null;
+  role: 'owner' | 'member';
+  joined_at?: string | null;
+}
+
 export interface InviteOut {
   key_prefix: string;
   created_at: string;

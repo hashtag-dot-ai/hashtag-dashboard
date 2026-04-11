@@ -7,7 +7,7 @@ import { Trash2, Plus, Key, Link, Users } from 'lucide-react';
 import { useToken } from '@/hooks/useToken';
 import { getProject, updateProject, deleteProject } from '@/api/projects';
 import { listKeys, createKey, revokeKey } from '@/api/keys';
-import { createInvite, listInvites } from '@/api/invites';
+import { createInvite, listInvites, listMembers } from '@/api/invites';
 import { API_URL } from '@/config';
 import { cn } from '@/lib/utils';
 import CopyButton from '@/components/CopyButton';
@@ -91,6 +91,12 @@ export default function ProjectDetail() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const { data: members, isLoading: membersLoading } = useQuery({
+    queryKey: ['project-members', tenantId],
+    queryFn: async () => listMembers(tenantId!, await getToken()),
+    enabled: !!tenantId,
+  });
+
   const { data: invites, isLoading: invitesLoading } = useQuery({
     queryKey: ['invites', tenantId],
     queryFn: async () => listInvites(tenantId!, await getToken()),
@@ -101,6 +107,7 @@ export default function ProjectDetail() {
     mutationFn: async () => createInvite(tenantId!, await getToken()),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['invites', tenantId] });
+      qc.invalidateQueries({ queryKey: ['project-members', tenantId] });
       setNewInvite(data);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -326,6 +333,43 @@ export default function ProjectDetail() {
 
         {/* Members */}
         <Tabs.Content value="members" className="space-y-4">
+          {/* Member list */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-800 mb-4">Members</h2>
+            {membersLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {members?.map((m) => (
+                  <li key={m.user_id} className="flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-sm font-medium select-none">
+                        {m.email ? m.email[0].toUpperCase() : '?'}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-gray-800">{m.email ?? `User #${m.user_id}`}</p>
+                        {m.joined_at && (
+                          <p className="text-xs text-gray-400">Joined {new Date(m.joined_at).toLocaleDateString()}</p>
+                        )}
+                      </div>
+                    </div>
+                    <span className={cn(
+                      'text-xs px-2 py-0.5 rounded-full font-medium',
+                      m.role === 'owner'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-gray-100 text-gray-600',
+                    )}>
+                      {m.role}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Invite links */}
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold text-gray-800">Invite Links</h2>
@@ -339,7 +383,7 @@ export default function ProjectDetail() {
             </div>
 
             <p className="text-xs text-gray-400 mb-4">
-              Each link is a shareable URL anyone can use to join this project. Revoke a link to
+              Each link can be used by multiple people to join this project. Revoke a link to
               stop accepting new members via it — existing members are unaffected.
             </p>
 
@@ -348,7 +392,7 @@ export default function ProjectDetail() {
                 {[1, 2].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
               </div>
             ) : !invites?.length ? (
-              <div className="text-center py-8 text-gray-400 text-sm">
+              <div className="text-center py-6 text-gray-400 text-sm">
                 <Users size={24} className="mx-auto mb-2 opacity-40" />
                 No active invite links. Create one to share.
               </div>
