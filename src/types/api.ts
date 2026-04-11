@@ -17,6 +17,7 @@ export interface ProjectOut {
   name: string;
   default_schema?: string | null;
   default_prompt?: string | null;
+  is_owner: boolean;
 }
 
 export interface ProjectCreate {
@@ -89,4 +90,23 @@ export interface MemberAdd {
 export interface AvailabilityCheck {
   available: boolean;
   reason?: string;
+}
+
+export interface InviteOut {
+  key_prefix: string;
+  created_at: string;
+}
+
+export interface InviteCreated extends InviteOut {
+  raw_token: string;
+}
+
+export interface InviteAccept {
+  token: string;
+}
+
+export interface InviteAcceptResult {
+  tenant_id: string;
+  project_name: string;
+  already_member: boolean;
 }

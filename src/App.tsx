@@ -13,6 +13,7 @@ import ProjectDetail from '@/pages/ProjectDetail';
 import Billing from '@/pages/Billing';
 import Teams from '@/pages/Teams';
 import TeamDetail from '@/pages/TeamDetail';
+import AcceptInvite from '@/pages/AcceptInvite';
 
 /**
  * Syncs Auth0 state → our UserContext after OAuth redirect.
@@ -62,6 +63,7 @@ function AppRoutes() {
         path="/login"
         element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
+      <Route path="/accept-invite" element={<AcceptInvite />} />
       <Route
         element={
           <ProtectedRoute>

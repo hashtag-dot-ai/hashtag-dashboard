@@ -3,15 +3,17 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Tabs from '@radix-ui/react-tabs';
 import { toast } from 'sonner';
-import { Trash2, Plus, Key } from 'lucide-react';
+import { Trash2, Plus, Key, Link, Users } from 'lucide-react';
 import { useToken } from '@/hooks/useToken';
 import { getProject, updateProject, deleteProject } from '@/api/projects';
 import { listKeys, createKey, revokeKey } from '@/api/keys';
+import { createInvite, listInvites } from '@/api/invites';
 import { API_URL } from '@/config';
 import { cn } from '@/lib/utils';
 import CopyButton from '@/components/CopyButton';
 import RawKeyModal from '@/components/RawKeyModal';
-import type { KeyCreated, KeyType } from '@/types/api';
+import InviteLinkModal from '@/components/InviteLinkModal';
+import type { KeyCreated, KeyType, InviteCreated } from '@/types/api';
 
 const KEY_TYPE_LABELS: Record<KeyType, string> = {
   read_only: 'Read Only',
@@ -32,6 +34,7 @@ export default function ProjectDetail() {
   const qc = useQueryClient();
 
   const [newRawKey, setNewRawKey] = useState<KeyCreated | null>(null);
+  const [newInvite, setNewInvite] = useState<InviteCreated | null>(null);
   const [showCreateKey, setShowCreateKey] = useState(false);
   const [keyType, setKeyType] = useState<KeyType>('read_write');
   const [keyDesc, setKeyDesc] = useState('');
@@ -88,6 +91,30 @@ export default function ProjectDetail() {
     onError: (err: Error) => toast.error(err.message),
   });
 
+  const { data: invites, isLoading: invitesLoading } = useQuery({
+    queryKey: ['invites', tenantId],
+    queryFn: async () => listInvites(tenantId!, await getToken()),
+    enabled: !!tenantId,
+  });
+
+  const createInviteMutation = useMutation({
+    mutationFn: async () => createInvite(tenantId!, await getToken()),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['invites', tenantId] });
+      setNewInvite(data);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const revokeInviteMutation = useMutation({
+    mutationFn: async (prefix: string) => revokeKey(tenantId!, prefix, await getToken()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invites', tenantId] });
+      toast.success('Invite revoked');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
   const updateMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
@@ -128,6 +155,7 @@ export default function ProjectDetail() {
   return (
     <div className="max-w-3xl">
       {newRawKey && <RawKeyModal keyData={newRawKey} onClose={() => setNewRawKey(null)} />}
+      {newInvite && <InviteLinkModal rawToken={newInvite.raw_token} onClose={() => setNewInvite(null)} />}
 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
@@ -136,7 +164,7 @@ export default function ProjectDetail() {
 
       <Tabs.Root defaultValue="overview">
         <Tabs.List className="flex border-b border-gray-200 mb-6 gap-1">
-          {['overview', 'keys', 'settings', 'danger'].map((tab) => (
+          {['overview', 'keys', 'members', 'settings', ...(project.is_owner ? ['danger'] : [])].map((tab) => (
             <Tabs.Trigger
               key={tab}
               value={tab}
@@ -147,7 +175,7 @@ export default function ProjectDetail() {
                 tab === 'danger' && 'text-red-400 hover:text-red-600 data-[state=active]:text-red-600 data-[state=active]:border-red-500',
               )}
             >
-              {tab === 'danger' ? 'Danger Zone' : tab === 'keys' ? 'API Keys' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              {tab === 'danger' ? 'Danger Zone' : tab === 'keys' ? 'API Keys' : tab === 'members' ? 'Members' : tab.charAt(0).toUpperCase() + tab.slice(1)}
             </Tabs.Trigger>
           ))}
         </Tabs.List>
@@ -289,6 +317,61 @@ export default function ProjectDetail() {
                         <Trash2 size={13} /> Revoke
                       </button>
                     )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </Tabs.Content>
+
+        {/* Members */}
+        <Tabs.Content value="members" className="space-y-4">
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold text-gray-800">Invite Links</h2>
+              <button
+                onClick={() => createInviteMutation.mutate()}
+                disabled={createInviteMutation.isPending}
+                className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
+              >
+                <Link size={14} /> Create invite link
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 mb-4">
+              Each link is a shareable URL anyone can use to join this project. Revoke a link to
+              stop accepting new members via it — existing members are unaffected.
+            </p>
+
+            {invitesLoading ? (
+              <div className="space-y-2">
+                {[1, 2].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
+              </div>
+            ) : !invites?.length ? (
+              <div className="text-center py-8 text-gray-400 text-sm">
+                <Users size={24} className="mx-auto mb-2 opacity-40" />
+                No active invite links. Create one to share.
+              </div>
+            ) : (
+              <ul className="divide-y divide-gray-100">
+                {invites.map((inv) => (
+                  <li key={inv.key_prefix} className="flex items-center justify-between py-3">
+                    <div>
+                      <code className="text-sm font-mono text-gray-800">{inv.key_prefix}…</code>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        Created {new Date(inv.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        if (confirm(`Revoke this invite link (${inv.key_prefix})? Existing members will not be removed.`)) {
+                          revokeInviteMutation.mutate(inv.key_prefix);
+                        }
+                      }}
+                      className="text-xs text-red-500 hover:text-red-700 flex items-center gap-1 transition-colors"
+                    >
+                      <Trash2 size={13} /> Revoke
+                    </button>
                   </li>
                 ))}
               </ul>

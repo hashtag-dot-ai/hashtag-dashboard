@@ -21,6 +21,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         redirect_uri: window.location.origin,
         audience: AUTH_CONFIG.audience,
       }}
+      onRedirectCallback={(appState) => {
+        window.history.replaceState({}, '', appState?.returnTo ?? window.location.pathname);
+      }}
     >
       <QueryClientProvider client={queryClient}>
         <App />
