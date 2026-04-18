@@ -25,7 +25,7 @@ export default function Layout() {
     if (DEV_BYPASS) {
       navigate('/login');
     } else {
-      logout({ logoutParams: { returnTo: window.location.origin + '/login' } });
+      logout({ logoutParams: { returnTo: window.location.origin } });
     }
   };
 

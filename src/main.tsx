@@ -20,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: AUTH_CONFIG.audience,
+        scope: 'openid profile email',
       }}
       onRedirectCallback={(appState) => {
         window.history.replaceState({}, '', appState?.returnTo ?? window.location.pathname);
