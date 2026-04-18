@@ -1,4 +1,3 @@
-import { useRef, useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
@@ -6,28 +5,22 @@ import { LogOut } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useUser } from '@/context/UserContext';
 import { DEV_BYPASS } from '@/config';
-import { useEffect } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export default function Layout() {
   const { user: appUser, clearAuth } = useUser();
   const { logout, user: auth0User } = useAuth0();
   const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
 
   const handleLogout = () => {
-    setOpen(false);
     clearAuth();
     if (DEV_BYPASS) {
       navigate('/login');
@@ -46,36 +39,31 @@ export default function Layout() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-14 px-6 flex items-center justify-between border-b border-gray-200 bg-white shrink-0">
           <div />
-          <div className="relative" ref={dropdownRef}>
-            <button
-              onClick={() => setOpen(v => !v)}
-              className="h-9 w-9 rounded-full overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
-            >
-              {auth0User?.picture ? (
-                <img src={auth0User.picture} alt={displayName} className="h-full w-full object-cover" />
-              ) : (
-                <span className="h-full w-full flex items-center justify-center bg-gray-200 text-gray-600 text-sm font-medium">
-                  {initials}
-                </span>
-              )}
-            </button>
-
-            {open && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-medium text-gray-900 truncate">{displayName}</p>
-                  <p className="text-xs text-gray-500 truncate">{displayEmail}</p>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400">
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={auth0User?.picture} alt={displayName} />
+                  <AvatarFallback className="bg-gray-200 text-gray-600 text-sm font-medium">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{displayName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{displayEmail}</p>
                 </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  <LogOut size={14} />
-                  Log out
-                </button>
-              </div>
-            )}
-          </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </header>
         <main className="flex-1 overflow-y-auto p-6">
           <Outlet />

@@ -234,11 +234,10 @@ export default function KGGraph({ tenantId }: Props) {
       .attr('stroke-width', 1.2)
       .attr('marker-end', 'url(#kg-arrow)');
 
-    // Link-type labels (only when sparse)
-    const showLinkLabels = links.length <= 200;
+    // Link-type labels
     const linkLabelSel = g.append('g').attr('class', 'link-labels')
       .selectAll<SVGTextElement, SimLink>('text')
-      .data(showLinkLabels ? links : [])
+      .data(links)
       .join('text')
       .attr('font-size', '7px')
       .attr('fill', '#94a3b8')
