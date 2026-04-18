@@ -117,3 +117,25 @@ export interface InviteAcceptResult {
   project_name: string;
   already_member: boolean;
 }
+
+// Knowledge graph types (returned by GET /{tenant_id}/graph)
+export type GraphInclude = 'entities' | 'entities_docs' | 'full';
+
+export interface GraphNode {
+  element_id: string;
+  labels: string[];
+  properties: Record<string, unknown>;
+}
+
+export interface GraphRelationship {
+  element_id: string;
+  type: string;
+  start_node_element_id: string;
+  end_node_element_id: string;
+  properties: Record<string, unknown>;
+}
+
+export interface GraphResponse {
+  nodes: GraphNode[];
+  relationships: GraphRelationship[];
+}
