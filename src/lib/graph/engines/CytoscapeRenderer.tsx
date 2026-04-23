@@ -19,6 +19,7 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
     const containerRef = useRef<HTMLDivElement>(null);
     const tipRef       = useRef<HTMLDivElement>(null);
     const cyRef        = useRef<cytoscape.Core | null>(null);
+    const layoutRef    = useRef<cytoscape.Layouts | null>(null);
 
     // ---------------------------------------------------------------------------
     // Imperative handle — zoom buttons
@@ -42,19 +43,15 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
     }
 
     // ---------------------------------------------------------------------------
-    // Cytoscape initialisation — runs once on mount
+    // Cytoscape initialisation — runs once on mount, creates empty instance
+    // Element management is handled entirely by the update effect below.
     // ---------------------------------------------------------------------------
     useEffect(() => {
       if (!containerRef.current) return;
 
-      // Split into nodes-first object so Cytoscape guarantees node insertion
-      // before edges regardless of array ordering.
       const cy = cytoscape({
         container: containerRef.current,
-        elements: {
-          nodes: elements.filter(e => e.group === 'nodes'),
-          edges: elements.filter(e => e.group === 'edges'),
-        },
+        elements: [],
         style: [
           {
             selector: 'node',
@@ -99,20 +96,6 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
             },
           },
         ],
-        layout: {
-          name: 'cose',
-          animate: true,
-          animationDuration: 800,
-          nodeDimensionsIncludeLabels: false,
-          nodeRepulsion: () => 4096,
-          idealEdgeLength: () => 80,
-          edgeElasticity: () => 32,
-          gravity: 1,
-          numIter: 1000,
-          initialTemp: 1000,
-          coolingFactor: 0.99,
-          minTemp: 1,
-        } as cytoscape.LayoutOptions,
         minZoom: 0.05,
         maxZoom: 5,
       });
@@ -167,25 +150,46 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
         if (tip) tip.style.display = 'none';
       });
 
-      return () => { cy.destroy(); cyRef.current = null; };
+      return () => {
+        layoutRef.current?.stop();
+        layoutRef.current = null;
+        cy.destroy();
+        cyRef.current = null;
+      };
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);  // intentionally mount-only — data changes handled below
+    }, []);  // intentionally mount-only
 
     // ---------------------------------------------------------------------------
-    // Update elements when data changes without destroying the instance
+    // Update elements when data changes without destroying the instance.
+    // Owns all element management: stop layout → clear → add nodes → add edges → layout.
     // ---------------------------------------------------------------------------
     useEffect(() => {
       const cy = cyRef.current;
       if (!cy) return;
 
+      // Stop any running layout before touching elements to avoid animation-frame crashes.
+      layoutRef.current?.stop();
+      layoutRef.current = null;
+
       cy.elements().remove();
-      // Add nodes before edges to avoid "nonexistent source" errors
       cy.add(elements.filter(e => e.group === 'nodes'));
-      cy.add(elements.filter(e => e.group === 'edges'));
-      cy.layout({
+
+      // Build node id set from input elements (not cy.nodes()) to avoid any
+      // Cytoscape-internal ID transformation issues.
+      const nodeIdSet = new Set(
+        elements.filter(e => e.group === 'nodes').map(e => e.data.id as string),
+      );
+      cy.add(elements.filter(e =>
+        e.group === 'edges' &&
+        nodeIdSet.has(e.data.source as string) &&
+        nodeIdSet.has(e.data.target as string),
+      ));
+
+      // animate: false runs the layout synchronously, avoiding rAF-after-destroy
+      // crashes caused by React StrictMode's double-invocation of effects.
+      layoutRef.current = cy.layout({
         name: 'cose',
-        animate: true,
-        animationDuration: 600,
+        animate: false,
         nodeRepulsion: () => 4096,
         idealEdgeLength: () => 80,
         edgeElasticity: () => 32,
@@ -194,7 +198,8 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
         initialTemp: 800,
         coolingFactor: 0.99,
         minTemp: 1,
-      } as cytoscape.LayoutOptions).run();
+      } as cytoscape.LayoutOptions);
+      layoutRef.current.run();
     }, [elements]);
 
     return (

@@ -25,14 +25,13 @@ export function adaptToCytoscape(response: GraphResponse): CyElements {
     return {
       group: 'nodes',
       data: {
-        id: n.element_id,
-        // Pre-computed visual hints for the stylesheet
-        color: nodeColor(n.labels),
-        size: nodeRadius(n.labels) * 2, // Cytoscape uses diameter, not radius
-        label: nodeDisplayName(n.labels, n.properties),
-        // Domain data (available for tooltips / future filtering)
-        labels: n.labels,
+        // safeProps first so that reserved Cytoscape keys below always win
         ...safeProps,
+        id: n.element_id,
+        color: nodeColor(n.labels),
+        size: nodeRadius(n.labels) * 2,
+        label: nodeDisplayName(n.labels, n.properties),
+        labels: n.labels,
       },
     };
   });
@@ -46,12 +45,13 @@ export function adaptToCytoscape(response: GraphResponse): CyElements {
     .map(r => ({
       group: 'edges',
       data: {
+        // properties first so id/source/target always win
+        ...r.properties,
         id: r.element_id,
         source: r.start_node_element_id,
         target: r.end_node_element_id,
         label: r.type,
         type: r.type,
-        ...r.properties,
       },
     }));
 
