@@ -3,6 +3,8 @@ import type { MeResponse } from '@/types/api';
 
 interface UserContextValue {
   user: MeResponse | null;
+  firstLoginKey: string | null;   // raw account key from first login — shown once
+  dismissFirstLoginKey: () => void;
   setAuth: (user: MeResponse) => void;
   clearAuth: () => void;
 }
@@ -11,12 +13,25 @@ const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<MeResponse | null>(null);
+  const [firstLoginKey, setFirstLoginKey] = useState<string | null>(null);
 
-  const setAuth = (u: MeResponse) => setUser(u);
-  const clearAuth = () => setUser(null);
+  const setAuth = (u: MeResponse) => {
+    if (u.raw_account_key) {
+      setFirstLoginKey(u.raw_account_key);
+    }
+    // Strip raw_account_key from stored user — it should not persist in state.
+    setUser({ ...u, raw_account_key: null });
+  };
+
+  const clearAuth = () => {
+    setUser(null);
+    setFirstLoginKey(null);
+  };
+
+  const dismissFirstLoginKey = () => setFirstLoginKey(null);
 
   return (
-    <UserContext.Provider value={{ user, setAuth, clearAuth }}>
+    <UserContext.Provider value={{ user, firstLoginKey, dismissFirstLoginKey, setAuth, clearAuth }}>
       {children}
     </UserContext.Provider>
   );

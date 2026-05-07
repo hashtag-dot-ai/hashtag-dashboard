@@ -8,8 +8,25 @@ export interface MeResponse {
   user_id: number;
   auth0_sub: string;
   email?: string | null;
+  username?: string | null;
+  account_key_prefix?: string | null;
+  /** Only present on first login and after key rotation. Store securely. */
+  raw_account_key?: string | null;
   plan: PlanType;
   credits_remaining: number;
+}
+
+export interface ProfileUpdate {
+  username: string;
+}
+
+export interface AccountKeyRotated {
+  raw_key: string;
+  key_prefix: string;
+}
+
+export interface UsernameSuggestion {
+  suggestion: string;
 }
 
 export interface ProjectOut {
