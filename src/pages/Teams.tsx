@@ -161,7 +161,15 @@ export default function Teams() {
                 <p className="text-sm font-medium text-gray-900">{t.name}</p>
                 <p className="text-xs text-gray-400 font-mono mt-0.5">{t.slug}</p>
               </div>
-              <ArrowRight size={16} className="text-gray-400" />
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  'text-xs px-2 py-0.5 rounded-full font-medium',
+                  t.is_owner ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600',
+                )}>
+                  {t.role}
+                </span>
+                <ArrowRight size={16} className="text-gray-400" />
+              </div>
             </Link>
           ))
         )}

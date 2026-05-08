@@ -1,5 +1,5 @@
 import { request } from './client';
-import type { InviteOut, InviteCreated, InviteAccept, InviteAcceptResult, ProjectMemberOut } from '@/types/api';
+import type { InviteOut, InviteCreated, InviteAccept, InviteAcceptResult, InvitePreview, ProjectMemberOut } from '@/types/api';
 
 export const createInvite = (tenantId: string, token?: string | null) =>
   request<InviteCreated>(
@@ -13,6 +13,13 @@ export const listInvites = (tenantId: string, token?: string | null) =>
 
 export const listMembers = (tenantId: string, token?: string | null) =>
   request<ProjectMemberOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/members`, {}, token);
+
+export const previewInvite = (token: string, authToken?: string | null) =>
+  request<InvitePreview>(
+    `/mgmt/projects/invites/preview?token=${encodeURIComponent(token)}`,
+    { method: 'GET' },
+    authToken,
+  );
 
 export const acceptInvite = (body: InviteAccept, token?: string | null) =>
   request<InviteAcceptResult>(

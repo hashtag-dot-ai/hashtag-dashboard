@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, ArrowRight, RefreshCw, Check, Pencil, X } from 'lucide-react';
+import { Plus, ArrowRight, RefreshCw, Check, Pencil, X, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
 import { getBilling } from '@/api/billing';
@@ -27,8 +27,7 @@ export default function Dashboard() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
 
-  // Account key rotation state
-  const [newRawKey, setNewRawKey] = useState<string | null>(null);
+  const [showBuyCredits, setShowBuyCredits] = useState(false);
 
   const { data: billing } = useQuery({
     queryKey: ['billing'],
@@ -59,11 +58,8 @@ export default function Dashboard() {
   const rotateKeyMutation = useMutation({
     mutationFn: async () => rotateAccountKey(await getToken()),
     onSuccess: (data) => {
-      setNewRawKey(data.raw_key);
-      // Update the prefix in the user context by refreshing via /mgmt/auth/me would be cleanest,
-      // but we can optimistically update it here.
-      if (user) setAuth({ ...user, account_key_prefix: data.key_prefix });
-      toast.success('Account key rotated — copy it now');
+      if (user) setAuth({ ...user, account_key_prefix: data.key_prefix, account_key: data.raw_key });
+      toast.success('Account key rotated');
     },
     onError: (err: Error) => toast.error(err.message),
   });
@@ -83,8 +79,6 @@ export default function Dashboard() {
       setUsernameInput(usernameSuggestionQuery.data.suggestion);
     }
   };
-
-  const displayKey = newRawKey ?? null;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -111,16 +105,33 @@ export default function Dashboard() {
               plan={billing.plan}
             />
             <div className="flex justify-end">
-              <Link
-                to="/billing"
-                className="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+              <button
+                onClick={() => setShowBuyCredits(true)}
+                className="flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
               >
-                Manage billing <ArrowRight size={14} />
-              </Link>
+                <CreditCard size={14} /> Buy credits
+              </button>
             </div>
           </>
         ) : (
           <div className="h-8 bg-gray-100 rounded animate-pulse" />
+        )}
+
+        {showBuyCredits && (
+          <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-4 space-y-2">
+            <p className="text-sm font-medium text-indigo-900">Get more credits</p>
+            <p className="text-sm text-indigo-700">
+              Send an email to{' '}
+              <a href="mailto:anj@hashtag.ai" className="underline font-medium">anj@hashtag.ai</a>
+              {' '}— we can grant special access for startups during the beta.
+            </p>
+            <button
+              onClick={() => setShowBuyCredits(false)}
+              className="text-xs text-indigo-500 hover:underline"
+            >
+              Dismiss
+            </button>
+          </div>
         )}
       </div>
 
@@ -189,29 +200,19 @@ export default function Dashboard() {
           <p className="text-xs text-gray-500">
             Full programmatic access to all your projects — keep this private.
           </p>
-          {displayKey ? (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-semibold text-amber-800">Copy your new account key — it won't be shown again.</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-xs font-mono bg-white border border-amber-200 rounded px-2 py-1.5 break-all text-gray-900">
-                  {displayKey}
-                </code>
-                <CopyButton value={displayKey} />
-              </div>
-              <button
-                onClick={() => setNewRawKey(null)}
-                className="text-xs text-amber-700 hover:underline"
-              >
-                I've saved it — dismiss
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3">
-              {user?.account_key_prefix && (
+          <div className="space-y-2">
+              {user?.account_key ? (
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-xs font-mono bg-gray-50 border border-gray-200 rounded px-2 py-1.5 break-all text-gray-800">
+                    {user.account_key}
+                  </code>
+                  <CopyButton value={user.account_key} />
+                </div>
+              ) : user?.account_key_prefix ? (
                 <span className="text-sm font-mono text-gray-500">
-                  {user.account_key_prefix}••••••••••••••••••••••••••••••••
+                  {user.account_key_prefix}•••• <span className="text-xs text-gray-400">(rotate to reveal full key)</span>
                 </span>
-              )}
+              ) : null}
               <button
                 onClick={() => {
                   if (window.confirm('Rotating your account key will immediately invalidate the current one. Continue?')) {
@@ -225,7 +226,6 @@ export default function Dashboard() {
                 Rotate key
               </button>
             </div>
-          )}
         </div>
       </div>
 

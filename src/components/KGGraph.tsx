@@ -7,7 +7,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, ZoomIn, ZoomOut, Maximize2, Key } from 'lucide-react';
+import { RefreshCw, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { fetchGraph } from '@/api/graph';
 import type { GraphInclude } from '@/types/api';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ import { adaptToCytoscape } from '@/lib/graph/adapters/cytoscape';
 import type { GraphRendererHandle } from '@/lib/graph/types';
 import D3Renderer from '@/lib/graph/engines/D3Renderer';
 import CytoscapeRenderer from '@/lib/graph/engines/CytoscapeRenderer';
+import { useUser } from '@/context/UserContext';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -36,48 +37,6 @@ const ENGINE_LABELS: { value: Engine; label: string }[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// API-key gate
-// ---------------------------------------------------------------------------
-
-function ApiKeyGate({ tenantId, onConnect }: { tenantId: string; onConnect: (key: string) => void }) {
-  const [value, setValue] = useState('');
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-      <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center">
-        <Key size={22} className="text-indigo-500" />
-      </div>
-      <div>
-        <p className="font-semibold text-gray-800">Connect your API key</p>
-        <p className="text-sm text-gray-400 mt-1 max-w-xs">
-          Enter a project API key to explore the knowledge graph.
-          You can create one in the <strong>API Keys</strong> tab.
-        </p>
-      </div>
-      <div className="flex w-full max-w-sm gap-2">
-        <input
-          type="password"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && value && onConnect(value)}
-          placeholder={`${tenantId}_sk_…`}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <button
-          onClick={() => value && onConnect(value)}
-          disabled={!value}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          Connect
-        </button>
-      </div>
-      <p className="text-xs text-gray-400">
-        Keys are stored in session storage and cleared when you close the tab.
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -86,37 +45,25 @@ interface Props {
 }
 
 export default function KGGraph({ tenantId }: Props) {
-  const SESSION_KEY = `kg_graph_key_${tenantId}`;
+  const { user } = useUser();
+  const accountKey = user?.account_key ?? null;
 
-  const [apiKey,  setApiKey]  = useState<string>(() => sessionStorage.getItem(SESSION_KEY) ?? '');
   const [include, setInclude] = useState<GraphInclude>('entities');
   const [engine,  setEngine]  = useState<Engine>('d3');
 
-  // Forwarded to whichever renderer is currently active
   const rendererRef = useRef<GraphRendererHandle>(null);
 
-  function handleConnect(key: string) {
-    sessionStorage.setItem(SESSION_KEY, key);
-    setApiKey(key);
-  }
-  function handleDisconnect() {
-    sessionStorage.removeItem(SESSION_KEY);
-    setApiKey('');
-  }
-
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['graph', tenantId, include, apiKey],
-    queryFn:  () => fetchGraph(tenantId, { include }, apiKey),
-    enabled:  !!apiKey,
+    queryKey: ['graph', tenantId, include, accountKey],
+    queryFn:  () => fetchGraph(tenantId, { include }, accountKey!),
+    enabled:  !!accountKey,
     staleTime: 60_000,
     retry: false,
   });
 
-  // Pre-adapt once per fetch for all engines — no repeated work on engine switch
   const d3Data   = useMemo(() => data ? adaptToD3(data)         : null, [data]);
   const cyData   = useMemo(() => data ? adaptToCytoscape(data)  : null, [data]);
 
-  // Legend derived from raw response (engine-agnostic)
   const legend = useMemo(() => {
     if (!data) return [];
     const seen = new Map<string, string>();
@@ -127,13 +74,10 @@ export default function KGGraph({ tenantId }: Props) {
     return Array.from(seen.entries()).map(([label, color]) => ({ label, color }));
   }, [data]);
 
-  // ---------------------------------------------------------------------------
-  // Gate: no API key yet
-  // ---------------------------------------------------------------------------
-  if (!apiKey) {
+  if (!accountKey) {
     return (
-      <div className="border border-gray-200 rounded-xl bg-white" style={{ height: '520px' }}>
-        <ApiKeyGate tenantId={tenantId} onConnect={handleConnect} />
+      <div className="border border-gray-200 rounded-xl bg-white flex items-center justify-center" style={{ height: '520px' }}>
+        <p className="text-sm text-gray-400">Account key not available. Try rotating your key from the Dashboard.</p>
       </div>
     );
   }
@@ -224,14 +168,6 @@ export default function KGGraph({ tenantId }: Props) {
           <RefreshCw size={12} className={isFetching ? 'animate-spin' : ''} />
           Refresh
         </button>
-
-        <button
-          onClick={handleDisconnect}
-          className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-          title="Clear API key"
-        >
-          Disconnect
-        </button>
       </div>
 
       {/* Graph canvas */}
@@ -260,15 +196,9 @@ export default function KGGraph({ tenantId }: Props) {
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 z-10">
             <p className="text-sm text-red-500">{(error as Error).message}</p>
-            {(error as Error).message.includes('401') || (error as Error).message.includes('Invalid') ? (
-              <button onClick={handleDisconnect} className="text-xs text-indigo-500 hover:underline">
-                Re-enter API key
-              </button>
-            ) : (
-              <button onClick={() => refetch()} className="text-xs text-indigo-500 hover:underline">
-                Retry
-              </button>
-            )}
+            <button onClick={() => refetch()} className="text-xs text-indigo-500 hover:underline">
+              Retry
+            </button>
           </div>
         )}
 

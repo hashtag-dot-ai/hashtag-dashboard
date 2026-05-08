@@ -14,6 +14,7 @@ import Billing from '@/pages/Billing';
 import Teams from '@/pages/Teams';
 import TeamDetail from '@/pages/TeamDetail';
 import AcceptInvite from '@/pages/AcceptInvite';
+import AcceptTeamInvite from '@/pages/AcceptTeamInvite';
 import CopyButton from '@/components/CopyButton';
 
 /**
@@ -115,6 +116,7 @@ function AppRoutes() {
         element={user ? <Navigate to="/dashboard" replace /> : <Login />}
       />
       <Route path="/accept-invite" element={<AcceptInvite />} />
+      <Route path="/accept-team-invite" element={<AcceptTeamInvite />} />
       <Route
         element={
           <ProtectedRoute>
@@ -126,7 +128,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:tenantId" element={<ProjectDetail />} />
-        <Route path="/billing" element={<Billing />} />
+        <Route path="/billing" element={<Navigate to="/dashboard" replace />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/teams/:slug" element={<TeamDetail />} />
       </Route>

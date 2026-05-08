@@ -5,6 +5,8 @@ import { Plus, ArrowRight, Check, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
 import { listProjects, createProject, checkTenantId } from '@/api/projects';
+import { listTeams } from '@/api/teams';
+import { useUser } from '@/context/UserContext';
 import { cn } from '@/lib/utils';
 
 function slugify(s: string) {
@@ -17,10 +19,12 @@ function slugify(s: string) {
 export default function Projects() {
   const getToken = useToken();
   const qc = useQueryClient();
+  const { user } = useUser();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [tenantId, setTenantId] = useState('');
   const [tenantIdManual, setTenantIdManual] = useState(false);
+  const [selectedPrefix, setSelectedPrefix] = useState<string>('');
   const [availability, setAvailability] = useState<{ available: boolean; reason?: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,6 +33,17 @@ export default function Projects() {
     queryKey: ['projects'],
     queryFn: async () => listProjects(await getToken()),
   });
+
+  const { data: teams } = useQuery({
+    queryKey: ['teams'],
+    queryFn: async () => listTeams(await getToken()),
+  });
+
+  // Available prefixes: own username + team slugs
+  const prefixes = [
+    ...(user?.username ? [`${user.username}-`] : []),
+    ...(teams?.map(t => `${t.slug}-`) ?? []),
+  ];
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -42,17 +57,25 @@ export default function Projects() {
       setName('');
       setTenantId('');
       setTenantIdManual(false);
+      setSelectedPrefix(prefixes[0] ?? '');
       setAvailability(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
+  // Set default prefix when prefixes load
+  useEffect(() => {
+    if (!selectedPrefix && prefixes.length > 0) {
+      setSelectedPrefix(prefixes[0]);
+    }
+  }, [prefixes.length]);
+
   // Auto-derive tenant_id from name unless user edited it manually
   useEffect(() => {
-    if (!tenantIdManual) {
-      setTenantId(slugify(name));
+    if (!tenantIdManual && selectedPrefix) {
+      setTenantId(`${selectedPrefix}${slugify(name)}`);
     }
-  }, [name, tenantIdManual]);
+  }, [name, tenantIdManual, selectedPrefix]);
 
   // Debounced availability check
   useEffect(() => {
@@ -110,9 +133,33 @@ export default function Projects() {
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">
-              Project ID (tenant_id)
+              Project ID
               <span className="text-gray-400 font-normal ml-1">— permanent, used in API calls</span>
             </label>
+            {prefixes.length > 1 && (
+              <div className="flex gap-1 flex-wrap mb-1">
+                {prefixes.map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPrefix(p);
+                      if (!tenantIdManual) {
+                        setTenantId(`${p}${slugify(name)}`);
+                      }
+                    }}
+                    className={cn(
+                      'text-xs px-2 py-0.5 rounded-full border font-mono transition-colors',
+                      selectedPrefix === p
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="relative">
               <input
                 type="text"
@@ -121,7 +168,7 @@ export default function Projects() {
                   setTenantIdManual(true);
                   setTenantId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''));
                 }}
-                placeholder="my-project"
+                placeholder={selectedPrefix ? `${selectedPrefix}my-project` : 'my-project'}
                 className={cn(
                   'w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8',
                   availability?.available === true && 'border-green-400',
@@ -149,7 +196,7 @@ export default function Projects() {
               {createMutation.isPending ? 'Creating…' : 'Create project'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setName(''); setTenantId(''); setTenantIdManual(false); setAvailability(null); }}
+              onClick={() => { setShowForm(false); setName(''); setTenantId(''); setTenantIdManual(false); setSelectedPrefix(prefixes[0] ?? ''); setAvailability(null); }}
               className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Cancel

@@ -19,7 +19,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (u.raw_account_key) {
       setFirstLoginKey(u.raw_account_key);
     }
-    // Strip raw_account_key from stored user — it should not persist in state.
     setUser({ ...u, raw_account_key: null });
   };
 

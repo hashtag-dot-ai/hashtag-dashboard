@@ -10,6 +10,8 @@ export interface MeResponse {
   email?: string | null;
   username?: string | null;
   account_key_prefix?: string | null;
+  /** Full account key — always returned. Keep private. */
+  account_key?: string | null;
   /** Only present on first login and after key rotation. Store securely. */
   raw_account_key?: string | null;
   plan: PlanType;
@@ -35,6 +37,8 @@ export interface ProjectOut {
   default_schema?: string | null;
   default_prompt?: string | null;
   is_owner: boolean;
+  owner_username?: string | null;
+  team_slug?: string | null;
 }
 
 export interface ProjectCreate {
@@ -82,6 +86,8 @@ export interface PlanUpdate {
 export interface TeamOut {
   slug: string;
   name: string;
+  is_owner: boolean;
+  role: MemberRole;
 }
 
 export interface TeamCreate {
@@ -96,12 +102,42 @@ export interface TeamUpdate {
 export interface MemberOut {
   team_slug: string;
   user_id: number;
+  username?: string | null;
   role: MemberRole;
 }
 
-export interface MemberAdd {
-  user_id: number;
-  role?: MemberRole;
+export interface TeamInviteOut {
+  token_prefix: string;
+  created_at: string;
+}
+
+export interface TeamInviteCreated extends TeamInviteOut {
+  raw_token: string;
+}
+
+export interface TeamInvitePreview {
+  slug: string;
+  team_name: string;
+}
+
+export interface TeamInviteAccept {
+  token: string;
+}
+
+export interface TeamInviteAcceptResult {
+  slug: string;
+  team_name: string;
+  already_member: boolean;
+}
+
+export interface TeamKeyOut {
+  key_prefix: string;
+  description?: string | null;
+  revoked: boolean;
+}
+
+export interface TeamKeyCreated extends TeamKeyOut {
+  raw_key: string;
 }
 
 export interface AvailabilityCheck {
@@ -112,8 +148,14 @@ export interface AvailabilityCheck {
 export interface ProjectMemberOut {
   user_id: number;
   email?: string | null;
+  username?: string | null;
   role: 'owner' | 'member';
   joined_at?: string | null;
+}
+
+export interface InvitePreview {
+  tenant_id: string;
+  project_name: string;
 }
 
 export interface InviteOut {

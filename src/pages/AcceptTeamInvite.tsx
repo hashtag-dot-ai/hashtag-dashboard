@@ -2,13 +2,13 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '@/context/UserContext';
-import { previewInvite, acceptInvite } from '@/api/invites';
+import { previewTeamInvite, acceptTeamInvite } from '@/api/teams';
 import { DEV_BYPASS } from '@/config';
-import type { InviteAcceptResult, InvitePreview } from '@/types/api';
+import type { TeamInvitePreview, TeamInviteAcceptResult } from '@/types/api';
 
 type Status = 'loading' | 'confirming' | 'accepting' | 'success' | 'already_member' | 'error';
 
-export default function AcceptInvite() {
+export default function AcceptTeamInvite() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
 
@@ -16,8 +16,8 @@ export default function AcceptInvite() {
   const { user } = useUser();
 
   const [status, setStatus] = useState<Status>('loading');
-  const [preview, setPreview] = useState<InvitePreview | null>(null);
-  const [result, setResult] = useState<InviteAcceptResult | null>(null);
+  const [preview, setPreview] = useState<TeamInvitePreview | null>(null);
+  const [result, setResult] = useState<TeamInviteAcceptResult | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -36,7 +36,7 @@ export default function AcceptInvite() {
 
     if (!isAuthenticated) {
       loginWithRedirect({
-        appState: { returnTo: `/accept-invite?token=${encodeURIComponent(token)}` },
+        appState: { returnTo: `/accept-team-invite?token=${encodeURIComponent(token)}` },
       });
       return;
     }
@@ -49,7 +49,7 @@ export default function AcceptInvite() {
   async function loadPreview(_unused: null) {
     try {
       const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
-      const p = await previewInvite(token!, authToken);
+      const p = await previewTeamInvite(token!, authToken);
       setPreview(p);
       setStatus('confirming');
     } catch (err) {
@@ -62,7 +62,7 @@ export default function AcceptInvite() {
     setStatus('accepting');
     try {
       const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
-      const res = await acceptInvite({ token: token! }, authToken);
+      const res = await acceptTeamInvite({ token: token! }, authToken);
       setResult(res);
       setStatus(res.already_member ? 'already_member' : 'success');
     } catch (err) {
@@ -77,7 +77,7 @@ export default function AcceptInvite() {
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">
-            {status === 'accepting' ? 'Joining project…' : 'Loading…'}
+            {status === 'accepting' ? 'Joining team…' : 'Loading…'}
           </p>
         </div>
       </div>
@@ -94,15 +94,15 @@ export default function AcceptInvite() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Join project?</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Join team?</h1>
             <p className="text-sm text-gray-500 mb-6">
-              You've been invited to join <strong>{preview.project_name}</strong>.
+              You've been invited to join <strong>{preview.team_name}</strong>.
             </p>
             <button
               onClick={doAccept}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors mb-3"
             >
-              Join project
+              Join team
             </button>
             <Link to="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
               Decline
@@ -119,13 +119,13 @@ export default function AcceptInvite() {
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-1">You're in!</h1>
             <p className="text-sm text-gray-500 mb-6">
-              You've joined <strong>{result?.project_name}</strong>.
+              You've joined <strong>{result?.team_name}</strong>.
             </p>
             <Link
-              to={`/projects/${result?.tenant_id}`}
+              to={`/teams/${result?.slug}`}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
             >
-              Open project
+              Open team
             </Link>
           </>
         )}
@@ -139,13 +139,13 @@ export default function AcceptInvite() {
             </div>
             <h1 className="text-xl font-bold text-gray-900 mb-1">Already a member</h1>
             <p className="text-sm text-gray-500 mb-6">
-              You already have access to <strong>{result?.project_name}</strong>.
+              You're already a member of <strong>{result?.team_name}</strong>.
             </p>
             <Link
-              to={`/projects/${result?.tenant_id}`}
+              to={`/teams/${result?.slug}`}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
             >
-              Open project
+              Open team
             </Link>
           </>
         )}
