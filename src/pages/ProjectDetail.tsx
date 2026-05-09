@@ -184,6 +184,16 @@ export default function ProjectDetail() {
       <div className="max-w-3xl mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
         <p className="text-sm text-gray-400 font-mono mt-1">{project.tenant_id}</p>
+        {project.team_slug && (
+          <div className="flex items-center gap-2 mt-2">
+            <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-medium">
+              Team: {project.team_slug}
+            </span>
+            {project.creator_username && (
+              <span className="text-xs text-gray-400">Created by @{project.creator_username}</span>
+            )}
+          </div>
+        )}
       </div>
 
       <Tabs.Root defaultValue="overview">
@@ -274,7 +284,7 @@ export default function ProjectDetail() {
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <h2 className="font-semibold text-gray-800">Project API Keys</h2>
-                  <p className="text-xs text-gray-500 mt-0.5">Scoped to this project only. Share with collaborators without exposing your account key.</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Scoped to this project only. Safe for AI agents, integrations, and apps. You are responsible for how you distribute this key.</p>
                 </div>
                 <button
                   onClick={() => setShowCreateKey(true)}

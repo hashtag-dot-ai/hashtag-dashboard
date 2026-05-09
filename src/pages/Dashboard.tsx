@@ -238,7 +238,7 @@ export default function Dashboard() {
             className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
           >
             <Plus size={14} />
-            New project
+            Projects ›
           </Link>
         </div>
 

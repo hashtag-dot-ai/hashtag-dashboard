@@ -39,6 +39,7 @@ export interface ProjectOut {
   is_owner: boolean;
   owner_username?: string | null;
   team_slug?: string | null;
+  creator_username?: string | null;
 }
 
 export interface ProjectCreate {
@@ -88,6 +89,8 @@ export interface TeamOut {
   name: string;
   is_owner: boolean;
   role: MemberRole;
+  credits_remaining: number;
+  use_team_credits: boolean;
 }
 
 export interface TeamCreate {
@@ -96,7 +99,8 @@ export interface TeamCreate {
 }
 
 export interface TeamUpdate {
-  name: string;
+  name?: string | null;
+  use_team_credits?: boolean | null;
 }
 
 export interface MemberOut {
@@ -134,6 +138,7 @@ export interface TeamKeyOut {
   key_prefix: string;
   description?: string | null;
   revoked: boolean;
+  creator_username?: string | null;
 }
 
 export interface TeamKeyCreated extends TeamKeyOut {

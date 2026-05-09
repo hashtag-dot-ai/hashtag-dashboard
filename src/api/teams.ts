@@ -94,3 +94,17 @@ export const revokeTeamKey = (slug: string, keyPrefix: string, token?: string | 
     { method: 'DELETE' },
     token,
   );
+
+export const listTeamProjects = (slug: string, token?: string | null) =>
+  request<{ tenant_id: string; name: string }[]>(
+    `/mgmt/teams/${encodeURIComponent(slug)}/projects`,
+    {},
+    token,
+  );
+
+export const leaveTeam = (slug: string, userId: number, token?: string | null) =>
+  request<void>(
+    `/mgmt/teams/${encodeURIComponent(slug)}/members/${userId}`,
+    { method: 'DELETE' },
+    token,
+  );
