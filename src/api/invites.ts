@@ -1,29 +1,43 @@
 import { request } from './client';
-import type { InviteOut, InviteCreated, InviteAccept, InviteAcceptResult, InvitePreview, ProjectMemberOut } from '@/types/api';
+import type {
+  InviteOut,
+  InviteCreated,
+  InviteAccept,
+  InviteAcceptResult,
+  InvitePreview,
+  CorpusMemberOut,
+} from '@/types/api';
 
-export const createInvite = (tenantId: string, token?: string | null) =>
+export const createInvite = (corpusId: string, token?: string | null) =>
   request<InviteCreated>(
-    `/mgmt/projects/${encodeURIComponent(tenantId)}/invites`,
+    `/mgmt/corpuses/${encodeURIComponent(corpusId)}/invites`,
     { method: 'POST' },
     token,
   );
 
-export const listInvites = (tenantId: string, token?: string | null) =>
-  request<InviteOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/invites`, {}, token);
+export const listInvites = (corpusId: string, token?: string | null) =>
+  request<InviteOut[]>(`/mgmt/corpuses/${encodeURIComponent(corpusId)}/invites`, {}, token);
 
-export const listMembers = (tenantId: string, token?: string | null) =>
-  request<ProjectMemberOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/members`, {}, token);
+export const revokeInvite = (corpusId: string, tokenPrefix: string, token?: string | null) =>
+  request<void>(
+    `/mgmt/corpuses/${encodeURIComponent(corpusId)}/invites/${encodeURIComponent(tokenPrefix)}`,
+    { method: 'DELETE' },
+    token,
+  );
+
+export const listMembers = (corpusId: string, token?: string | null) =>
+  request<CorpusMemberOut[]>(`/mgmt/corpuses/${encodeURIComponent(corpusId)}/members`, {}, token);
 
 export const previewInvite = (token: string, authToken?: string | null) =>
   request<InvitePreview>(
-    `/mgmt/projects/invites/preview?token=${encodeURIComponent(token)}`,
+    `/mgmt/corpuses/invites/preview?token=${encodeURIComponent(token)}`,
     { method: 'GET' },
     authToken,
   );
 
 export const acceptInvite = (body: InviteAccept, token?: string | null) =>
   request<InviteAcceptResult>(
-    '/mgmt/projects/invites/accept',
+    '/mgmt/corpuses/invites/accept',
     { method: 'POST', body: JSON.stringify(body) },
     token,
   );

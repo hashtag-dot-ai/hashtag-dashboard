@@ -1,8 +1,10 @@
-// Generated from OpenAPI spec at http://localhost:8000/openapi.json
+// API types for KG Shim v5
 
-export type PlanType = 'free' | 'business' | 'enterprise';
-export type KeyType = 'read_only' | 'read_write' | 'manage';
-export type MemberRole = 'owner' | 'admin' | 'member';
+export type MemberRole = 'owner' | 'member';
+
+// ---------------------------------------------------------------------------
+// Auth
+// ---------------------------------------------------------------------------
 
 export interface MeResponse {
   user_id: number;
@@ -10,11 +12,10 @@ export interface MeResponse {
   email?: string | null;
   username?: string | null;
   account_key_prefix?: string | null;
-  /** Full account key — always returned. Keep private. */
+  /** Full account key — returned on first login and after rotation. Keep private. */
   account_key?: string | null;
-  /** Only present on first login and after key rotation. Store securely. */
+  /** Alias for first-login display. Same value as account_key when present. */
   raw_account_key?: string | null;
-  plan: PlanType;
   credits_remaining: number;
 }
 
@@ -31,64 +32,95 @@ export interface UsernameSuggestion {
   suggestion: string;
 }
 
-export interface ProjectOut {
-  tenant_id: string;
-  name: string;
-  default_schema?: string | null;
-  default_prompt?: string | null;
+// ---------------------------------------------------------------------------
+// Corpuses
+// ---------------------------------------------------------------------------
+
+export interface CorpusOut {
+  corpus_id: string;       // UUID perma-ID
+  compound_name: string;   // e.g. "alice:research"
+  name: string;            // slug part only
+  owner: string;           // username or team slug
+  is_personal: boolean;
   is_owner: boolean;
-  owner_username?: string | null;
   team_slug?: string | null;
-  creator_username?: string | null;
 }
 
-export interface ProjectCreate {
+export interface CorpusCreate {
   name: string;
-  tenant_id: string;
+  owner?: string | null;   // defaults to current user's username
 }
 
-export interface ProjectUpdate {
+export interface CorpusUpdate {
   name?: string | null;
-  default_schema?: string | null;
-  default_prompt?: string | null;
 }
+
+export interface AvailabilityCheck {
+  available: boolean;
+  reason?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Corpus keys
+// ---------------------------------------------------------------------------
 
 export interface KeyOut {
   key_prefix: string;
-  key_type: KeyType;
   description?: string | null;
-  rate_limit?: number | null;
   revoked: boolean;
 }
 
 export interface KeyCreate {
-  key_type?: KeyType;
   description?: string | null;
-  rate_limit?: number | null;
 }
 
 export interface KeyCreated extends KeyOut {
-  /** Shown ONCE at creation — never retrievable again */
   raw_key: string;
 }
 
-export interface BillingOut {
-  plan: PlanType;
-  credits_remaining: number;
-  /** -1 = unlimited (enterprise) */
-  credits_limit: number;
-  operation_costs: Record<string, number>;
+// ---------------------------------------------------------------------------
+// Corpus invites / members
+// ---------------------------------------------------------------------------
+
+export interface InviteOut {
+  token_prefix: string;
+  created_at: string;
 }
 
-export interface PlanUpdate {
-  plan: PlanType;
+export interface InviteCreated extends InviteOut {
+  raw_token: string;
 }
+
+export interface InvitePreview {
+  corpus_id: string;
+  compound_name: string;
+}
+
+export interface InviteAccept {
+  token: string;
+}
+
+export interface InviteAcceptResult {
+  corpus_id: string;
+  compound_name: string;
+  already_member: boolean;
+}
+
+export interface CorpusMemberOut {
+  user_id: number;
+  username?: string | null;
+  role: string;
+}
+
+// ---------------------------------------------------------------------------
+// Teams
+// ---------------------------------------------------------------------------
 
 export interface TeamOut {
   slug: string;
   name: string;
   is_owner: boolean;
-  role: MemberRole;
+  role: string;
   credits_remaining: number;
   use_team_credits: boolean;
 }
@@ -107,7 +139,7 @@ export interface MemberOut {
   team_slug: string;
   user_id: number;
   username?: string | null;
-  role: MemberRole;
+  role: string;
 }
 
 export interface TeamInviteOut {
@@ -138,51 +170,16 @@ export interface TeamKeyOut {
   key_prefix: string;
   description?: string | null;
   revoked: boolean;
-  creator_username?: string | null;
 }
 
 export interface TeamKeyCreated extends TeamKeyOut {
   raw_key: string;
 }
 
-export interface AvailabilityCheck {
-  available: boolean;
-  reason?: string;
-}
-
-export interface ProjectMemberOut {
-  user_id: number;
-  email?: string | null;
-  username?: string | null;
-  role: 'owner' | 'member';
-  joined_at?: string | null;
-}
-
-export interface InvitePreview {
-  tenant_id: string;
-  project_name: string;
-}
-
-export interface InviteOut {
-  key_prefix: string;
-  created_at: string;
-}
-
-export interface InviteCreated extends InviteOut {
-  raw_token: string;
-}
-
-export interface InviteAccept {
-  token: string;
-}
-
-export interface InviteAcceptResult {
-  tenant_id: string;
-  project_name: string;
-  already_member: boolean;
-}
-
+// ---------------------------------------------------------------------------
 // Knowledge graph types (returned by GET /{tenant_id}/graph)
+// ---------------------------------------------------------------------------
+
 export type GraphInclude = 'entities' | 'entities_docs' | 'full';
 
 export interface GraphNode {

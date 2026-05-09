@@ -1,4 +1,4 @@
-export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
+export const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8001';
 
 export const AUTH_CONFIG = {
   domain: import.meta.env.VITE_AUTH0_DOMAIN ?? 'login.bahi.ai',

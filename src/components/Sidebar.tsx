@@ -5,7 +5,7 @@ import { API_URL } from '@/config';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/projects', label: 'Projects', icon: FolderKanban },
+  { to: '/corpuses', label: 'Corpuses', icon: FolderKanban },
   { to: '/teams', label: 'Teams', icon: Users },
 ];
 

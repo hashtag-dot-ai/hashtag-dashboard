@@ -8,20 +8,14 @@ import { DEV_BYPASS } from '@/config';
 import Layout from '@/components/Layout';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
-import Projects from '@/pages/Projects';
-import ProjectDetail from '@/pages/ProjectDetail';
-import Billing from '@/pages/Billing';
+import Corpuses from '@/pages/Corpuses';
+import CorpusDetail from '@/pages/CorpusDetail';
 import Teams from '@/pages/Teams';
 import TeamDetail from '@/pages/TeamDetail';
 import AcceptInvite from '@/pages/AcceptInvite';
 import AcceptTeamInvite from '@/pages/AcceptTeamInvite';
 import CopyButton from '@/components/CopyButton';
 
-/**
- * Syncs Auth0 state → our UserContext after OAuth redirect.
- * When Auth0 finishes loading and says isAuthenticated=true but
- * we have no user record yet, exchange the token for a user via /mgmt/auth/me.
- */
 function AuthSync() {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
   const { user, setAuth } = useUser();
@@ -38,7 +32,6 @@ function AuthSync() {
   return null;
 }
 
-/** Modal shown once on first login when the API generates a new account key. */
 function FirstLoginKeyModal() {
   const { firstLoginKey, dismissFirstLoginKey } = useUser();
   const [confirmed, setConfirmed] = useState(false);
@@ -50,7 +43,7 @@ function FirstLoginKeyModal() {
       <div className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 space-y-4">
         <h2 className="text-lg font-bold text-gray-900">Your account key</h2>
         <p className="text-sm text-gray-600">
-          This is your account key — it grants full programmatic access to all your projects.
+          This is your account key — it grants full programmatic access to all your corpuses.
           Copy it now and store it securely. <strong>It won't be shown again.</strong>
         </p>
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center gap-2">
@@ -92,8 +85,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading: auth0Loading, isAuthenticated } = useAuth0();
   const { user } = useUser();
 
-  // While Auth0 is processing the redirect callback, show a spinner
-  // rather than immediately bouncing to /login.
   if (!DEV_BYPASS && (auth0Loading || (isAuthenticated && !user))) {
     return (
       <div className="flex h-screen items-center justify-center text-gray-400">
@@ -126,9 +117,11 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/projects" element={<Projects />} />
-        <Route path="/projects/:tenantId" element={<ProjectDetail />} />
-        <Route path="/billing" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/corpuses" element={<Corpuses />} />
+        <Route path="/corpuses/:corpusId" element={<CorpusDetail />} />
+        {/* Legacy redirect */}
+        <Route path="/projects" element={<Navigate to="/corpuses" replace />} />
+        <Route path="/projects/:tenantId" element={<Navigate to="/corpuses" replace />} />
         <Route path="/teams" element={<Teams />} />
         <Route path="/teams/:slug" element={<TeamDetail />} />
       </Route>

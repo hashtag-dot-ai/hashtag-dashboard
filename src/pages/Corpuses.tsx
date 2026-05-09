@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, ArrowRight, Check, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
-import { listProjects, createProject, checkTenantId } from '@/api/projects';
+import { listCorpuses, createCorpus, checkCorpusId } from '@/api/corpuses';
 import { listTeams } from '@/api/teams';
 import { useUser } from '@/context/UserContext';
 import { cn } from '@/lib/utils';
@@ -16,22 +16,20 @@ function slugify(s: string) {
     .replace(/[^a-z0-9_-]/g, '');
 }
 
-export default function Projects() {
+export default function Corpuses() {
   const getToken = useToken();
   const qc = useQueryClient();
   const { user } = useUser();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
-  const [tenantId, setTenantId] = useState('');
-  const [tenantIdManual, setTenantIdManual] = useState(false);
-  const [selectedPrefix, setSelectedPrefix] = useState<string>('');
+  const [selectedOwner, setSelectedOwner] = useState<string>('');
   const [availability, setAvailability] = useState<{ available: boolean; reason?: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { data: projects, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: async () => listProjects(await getToken()),
+  const { data: corpuses, isLoading } = useQuery({
+    queryKey: ['corpuses'],
+    queryFn: async () => listCorpuses(await getToken()),
   });
 
   const { data: teams } = useQuery({
@@ -39,53 +37,44 @@ export default function Projects() {
     queryFn: async () => listTeams(await getToken()),
   });
 
-  // Available prefixes: own username + team slugs
-  const prefixes = [
-    ...(user?.username ? [`${user.username}-`] : []),
-    ...(teams?.map(t => `${t.slug}-`) ?? []),
+  // Available owners: own username + team slugs (excluding personal team)
+  const owners = [
+    ...(user?.username ? [user.username] : []),
+    ...(teams?.filter(t => !t.slug.startsWith('personal-')).map(t => t.slug) ?? []),
   ];
+
+  const compoundName = selectedOwner && name ? `${selectedOwner}:${slugify(name)}` : '';
 
   const createMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return createProject({ name: name.trim(), tenant_id: tenantId }, token);
+      return createCorpus({ name: slugify(name), owner: selectedOwner || undefined }, token);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['projects'] });
-      toast.success('Project created');
+      qc.invalidateQueries({ queryKey: ['corpuses'] });
+      toast.success('Corpus created');
       setShowForm(false);
       setName('');
-      setTenantId('');
-      setTenantIdManual(false);
-      setSelectedPrefix(prefixes[0] ?? '');
       setAvailability(null);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
-  // Set default prefix when prefixes load
   useEffect(() => {
-    if (!selectedPrefix && prefixes.length > 0) {
-      setSelectedPrefix(prefixes[0]);
+    if (!selectedOwner && owners.length > 0) {
+      setSelectedOwner(owners[0]);
     }
-  }, [prefixes.length]);
-
-  // Auto-derive tenant_id from name unless user edited it manually
-  useEffect(() => {
-    if (!tenantIdManual && selectedPrefix) {
-      setTenantId(`${selectedPrefix}${slugify(name)}`);
-    }
-  }, [name, tenantIdManual, selectedPrefix]);
+  }, [owners.length]);
 
   // Debounced availability check
   useEffect(() => {
-    if (!tenantId) { setAvailability(null); return; }
+    if (!compoundName) { setAvailability(null); return; }
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setChecking(true);
       try {
         const token = await getToken();
-        const res = await checkTenantId(tenantId, token);
+        const res = await checkCorpusId(compoundName, token);
         setAvailability(res);
       } catch {
         setAvailability(null);
@@ -94,31 +83,31 @@ export default function Projects() {
       }
     }, 400);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [tenantId]);
+  }, [compoundName]);
 
   const canSubmit =
     name.trim() &&
-    tenantId &&
+    selectedOwner &&
     availability?.available === true &&
     !createMutation.isPending;
 
   return (
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Corpuses</h1>
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
             className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg font-medium transition-colors"
           >
-            <Plus size={14} /> New project
+            <Plus size={14} /> New corpus
           </button>
         )}
       </div>
 
       {showForm && (
         <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-          <h2 className="font-semibold text-gray-800">New project</h2>
+          <h2 className="font-semibold text-gray-800">New corpus</h2>
 
           <div className="space-y-1">
             <label className="text-sm font-medium text-gray-700">Name</label>
@@ -126,66 +115,60 @@ export default function Projects() {
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="My Project"
+              placeholder="my-corpus"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-gray-700">
-              Project ID
-              <span className="text-gray-400 font-normal ml-1">— permanent, used in API calls</span>
-            </label>
-            {prefixes.length > 1 && (
-              <div className="flex gap-1 flex-wrap mb-1">
-                {prefixes.map(p => (
+          {owners.length > 1 && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">Owner</label>
+              <div className="flex gap-1 flex-wrap">
+                {owners.map(o => (
                   <button
-                    key={p}
+                    key={o}
                     type="button"
-                    onClick={() => {
-                      setSelectedPrefix(p);
-                      if (!tenantIdManual) {
-                        setTenantId(`${p}${slugify(name)}`);
-                      }
-                    }}
+                    onClick={() => setSelectedOwner(o)}
                     className={cn(
                       'text-xs px-2 py-0.5 rounded-full border font-mono transition-colors',
-                      selectedPrefix === p
+                      selectedOwner === o
                         ? 'bg-indigo-600 text-white border-indigo-600'
                         : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
                     )}
                   >
-                    {p}
+                    {o}
                   </button>
                 ))}
               </div>
-            )}
-            <div className="relative">
-              <input
-                type="text"
-                value={tenantId}
-                onChange={(e) => {
-                  setTenantIdManual(true);
-                  setTenantId(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''));
-                }}
-                placeholder={selectedPrefix ? `${selectedPrefix}my-project` : 'my-project'}
-                className={cn(
-                  'w-full border rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8',
+            </div>
+          )}
+
+          {compoundName && (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-700">
+                Compound name
+                <span className="text-gray-400 font-normal ml-1">— permanent identifier</span>
+              </label>
+              <div className="relative">
+                <code className={cn(
+                  'block w-full border rounded-lg px-3 py-2 text-sm font-mono bg-gray-50 pr-8',
                   availability?.available === true && 'border-green-400',
                   availability?.available === false && 'border-red-400',
-                  !availability && 'border-gray-300',
-                )}
-              />
-              <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-sm">
-                {checking && <Loader2 size={14} className="animate-spin text-gray-400" />}
-                {!checking && availability?.available === true && <Check size={14} className="text-green-500" />}
-                {!checking && availability?.available === false && <X size={14} className="text-red-500" />}
+                  !availability && 'border-gray-200',
+                )}>
+                  {compoundName}
+                </code>
+                <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+                  {checking && <Loader2 size={14} className="animate-spin text-gray-400" />}
+                  {!checking && availability?.available === true && <Check size={14} className="text-green-500" />}
+                  {!checking && availability?.available === false && <X size={14} className="text-red-500" />}
+                </div>
               </div>
+              {availability?.available === false && (
+                <p className="text-xs text-red-600">{availability.reason ?? 'This name is already taken'}</p>
+              )}
             </div>
-            {availability?.available === false && (
-              <p className="text-xs text-red-600">{availability.reason ?? 'This ID is already taken'}</p>
-            )}
-          </div>
+          )}
 
           <div className="flex gap-2 pt-1">
             <button
@@ -193,10 +176,10 @@ export default function Projects() {
               disabled={!canSubmit}
               className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
             >
-              {createMutation.isPending ? 'Creating…' : 'Create project'}
+              {createMutation.isPending ? 'Creating…' : 'Create corpus'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setName(''); setTenantId(''); setTenantIdManual(false); setSelectedPrefix(prefixes[0] ?? ''); setAvailability(null); }}
+              onClick={() => { setShowForm(false); setName(''); setAvailability(null); }}
               className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Cancel
@@ -210,20 +193,25 @@ export default function Projects() {
           <div className="p-5 space-y-3">
             {[1, 2, 3].map((i) => <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />)}
           </div>
-        ) : !projects?.length ? (
+        ) : !corpuses?.length ? (
           <div className="p-10 text-center text-gray-400 text-sm">
-            No projects yet. Create one above.
+            No corpuses yet. Create one above.
           </div>
         ) : (
-          projects.map((p) => (
+          corpuses.map((c) => (
             <Link
-              key={p.tenant_id}
-              to={`/projects/${p.tenant_id}`}
+              key={c.corpus_id}
+              to={`/corpuses/${c.corpus_id}`}
               className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
             >
               <div>
-                <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{p.tenant_id}</p>
+                <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{c.compound_name}</p>
+                {c.team_slug && (
+                  <span className="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded-full font-medium mt-1 inline-block">
+                    {c.team_slug}
+                  </span>
+                )}
               </div>
               <ArrowRight size={16} className="text-gray-400" />
             </Link>

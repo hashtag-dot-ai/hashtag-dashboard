@@ -28,7 +28,7 @@ export default function AcceptInvite() {
     }
 
     if (DEV_BYPASS) {
-      if (status === 'loading') loadPreview(null);
+      if (status === 'loading') loadPreview();
       return;
     }
 
@@ -42,11 +42,10 @@ export default function AcceptInvite() {
     }
 
     if (!user) return;
-
-    if (status === 'loading') loadPreview(null);
+    if (status === 'loading') loadPreview();
   }, [token, auth0Loading, isAuthenticated, user, status]);
 
-  async function loadPreview(_unused: null) {
+  async function loadPreview() {
     try {
       const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
       const p = await previewInvite(token!, authToken);
@@ -77,7 +76,7 @@ export default function AcceptInvite() {
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-sm text-gray-500">
-            {status === 'accepting' ? 'Joining project…' : 'Loading…'}
+            {status === 'accepting' ? 'Joining corpus…' : 'Loading…'}
           </p>
         </div>
       </div>
@@ -94,15 +93,15 @@ export default function AcceptInvite() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Join project?</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Join corpus?</h1>
             <p className="text-sm text-gray-500 mb-6">
-              You've been invited to join <strong>{preview.project_name}</strong>.
+              You've been invited to join <strong>{preview.compound_name}</strong>.
             </p>
             <button
               onClick={doAccept}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors mb-3"
             >
-              Join project
+              Join corpus
             </button>
             <Link to="/dashboard" className="text-sm text-gray-400 hover:text-gray-600">
               Decline
@@ -110,42 +109,26 @@ export default function AcceptInvite() {
           </>
         )}
 
-        {status === 'success' && (
+        {(status === 'success' || status === 'already_member') && (
           <>
             <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">You're in!</h1>
+            <h1 className="text-xl font-bold text-gray-900 mb-1">
+              {status === 'already_member' ? 'Already a member' : "You're in!"}
+            </h1>
             <p className="text-sm text-gray-500 mb-6">
-              You've joined <strong>{result?.project_name}</strong>.
+              {status === 'already_member'
+                ? <>You already have access to <strong>{result?.compound_name}</strong>.</>
+                : <>You've joined <strong>{result?.compound_name}</strong>.</>}
             </p>
             <Link
-              to={`/projects/${result?.tenant_id}`}
+              to={`/corpuses/${result?.corpus_id}`}
               className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
             >
-              Open project
-            </Link>
-          </>
-        )}
-
-        {status === 'already_member' && (
-          <>
-            <div className="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-6 h-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Already a member</h1>
-            <p className="text-sm text-gray-500 mb-6">
-              You already have access to <strong>{result?.project_name}</strong>.
-            </p>
-            <Link
-              to={`/projects/${result?.tenant_id}`}
-              className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2.5 rounded-lg font-medium text-sm transition-colors"
-            >
-              Open project
+              Open corpus
             </Link>
           </>
         )}

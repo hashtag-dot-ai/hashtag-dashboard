@@ -5,18 +5,12 @@ import { Plus, ArrowRight, RefreshCw, Check, Pencil, X, CreditCard } from 'lucid
 import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
 import { getBilling } from '@/api/billing';
-import { listProjects } from '@/api/projects';
+import { listCorpuses } from '@/api/corpuses';
 import { updateProfile, rotateAccountKey, getUsernameSuggestion } from '@/api/auth';
 import { useUser } from '@/context/UserContext';
 import CreditBar from '@/components/CreditBar';
 import CopyButton from '@/components/CopyButton';
 
-const PLAN_LABELS = { free: 'Free', business: 'Business', enterprise: 'Enterprise' };
-const PLAN_BADGE: Record<string, string> = {
-  free: 'bg-gray-100 text-gray-700',
-  business: 'bg-emerald-100 text-emerald-700',
-  enterprise: 'bg-violet-100 text-violet-700',
-};
 
 export default function Dashboard() {
   const { user, setAuth } = useUser();
@@ -34,9 +28,9 @@ export default function Dashboard() {
     queryFn: async () => getBilling(await getToken()),
   });
 
-  const { data: projects } = useQuery({
-    queryKey: ['projects'],
-    queryFn: async () => listProjects(await getToken()),
+  const { data: corpuses } = useQuery({
+    queryKey: ['corpuses'],
+    queryFn: async () => listCorpuses(await getToken()),
   });
 
   const usernameSuggestionQuery = useQuery({
@@ -87,22 +81,14 @@ export default function Dashboard() {
         <p className="text-gray-500 mt-1">Welcome back{user?.email ? `, ${user.email}` : ''}.</p>
       </div>
 
-      {/* Plan + Credits */}
+      {/* Credits */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="font-semibold text-gray-800">Plan &amp; Credits</h2>
-          {billing && (
-            <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${PLAN_BADGE[billing.plan]}`}>
-              {PLAN_LABELS[billing.plan]}
-            </span>
-          )}
-        </div>
+        <h2 className="font-semibold text-gray-800">Credits</h2>
         {billing ? (
           <>
             <CreditBar
               remaining={billing.credits_remaining}
               limit={billing.credits_limit}
-              plan={billing.plan}
             />
             <div className="flex justify-end">
               <button
@@ -198,7 +184,7 @@ export default function Dashboard() {
         <div className="space-y-1.5">
           <p className="text-sm font-medium text-gray-700">Account key</p>
           <p className="text-xs text-gray-500">
-            Full programmatic access to all your projects — keep this private.
+            Full programmatic access to all your corpuses — keep this private.
           </p>
           <div className="space-y-2">
               {user?.account_key ? (
@@ -229,43 +215,43 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Projects */}
+      {/* Corpuses */}
       <div className="bg-white rounded-xl border border-gray-200 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-gray-800">Projects</h2>
+          <h2 className="font-semibold text-gray-800">Corpuses</h2>
           <Link
-            to="/projects"
+            to="/corpuses"
             className="flex items-center gap-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1.5 rounded-lg font-medium transition-colors"
           >
             <Plus size={14} />
-            Projects ›
+            Corpuses ›
           </Link>
         </div>
 
-        {!projects ? (
+        {!corpuses ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
               <div key={i} className="h-10 bg-gray-100 rounded animate-pulse" />
             ))}
           </div>
-        ) : projects.length === 0 ? (
+        ) : corpuses.length === 0 ? (
           <p className="text-sm text-gray-400 py-4 text-center">
-            No projects yet.{' '}
-            <Link to="/projects" className="text-indigo-600 hover:underline">
-              Create your first project →
+            No corpuses yet.{' '}
+            <Link to="/corpuses" className="text-indigo-600 hover:underline">
+              Create your first corpus →
             </Link>
           </p>
         ) : (
           <ul className="divide-y divide-gray-100">
-            {projects.map((p) => (
-              <li key={p.tenant_id}>
+            {corpuses.map((c) => (
+              <li key={c.corpus_id}>
                 <Link
-                  to={`/projects/${p.tenant_id}`}
+                  to={`/corpuses/${c.corpus_id}`}
                   className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-1 px-1 rounded transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-400 font-mono">{p.tenant_id}</p>
+                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                    <p className="text-xs text-gray-400 font-mono">{c.compound_name}</p>
                   </div>
                   <ArrowRight size={16} className="text-gray-400" />
                 </Link>

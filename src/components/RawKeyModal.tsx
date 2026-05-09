@@ -3,12 +3,6 @@ import { AlertTriangle, X } from 'lucide-react';
 import CopyButton from './CopyButton';
 import type { KeyCreated } from '@/types/api';
 
-const KEY_TYPE_LABELS: Record<string, string> = {
-  read_only: 'Read Only',
-  read_write: 'Read + Write',
-  manage: 'Manage',
-};
-
 interface Props {
   keyData: KeyCreated;
   onClose: () => void;
@@ -53,10 +47,6 @@ export default function RawKeyModal({ keyData, onClose }: Props) {
             </div>
 
             <dl className="grid grid-cols-2 gap-3 text-sm mb-6">
-              <div>
-                <dt className="text-gray-500">Type</dt>
-                <dd className="font-medium">{KEY_TYPE_LABELS[keyData.key_type] ?? keyData.key_type}</dd>
-              </div>
               {keyData.description && (
                 <div>
                   <dt className="text-gray-500">Label</dt>

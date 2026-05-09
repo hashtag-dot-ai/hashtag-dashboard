@@ -9,7 +9,7 @@ import {
   getTeam, listMembers, removeMember, leaveTeam,
   createTeamInvite, listTeamInvites, revokeTeamInvite,
   createTeamKey, listTeamKeys, revokeTeamKey,
-  listTeamProjects, updateTeam,
+  listTeamCorpuses, updateTeam,
 } from '@/api/teams';
 import { getBilling } from '@/api/billing';
 import { cn } from '@/lib/utils';
@@ -82,9 +82,9 @@ export default function TeamDetail() {
     enabled: !!slug,
   });
 
-  const { data: teamProjects } = useQuery({
-    queryKey: ['team-projects', slug],
-    queryFn: async () => listTeamProjects(slug!, await getToken()),
+  const { data: teamCorpuses } = useQuery({
+    queryKey: ['team-corpuses', slug],
+    queryFn: async () => listTeamCorpuses(slug!, await getToken()),
     enabled: !!slug,
   });
 
@@ -386,20 +386,20 @@ export default function TeamDetail() {
         )}
       </div>
 
-      {/* Projects */}
-      {teamProjects && teamProjects.length > 0 && (
+      {/* Corpuses */}
+      {teamCorpuses && teamCorpuses.length > 0 && (
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <h2 className="font-semibold text-gray-800 mb-4">Team Projects</h2>
+          <h2 className="font-semibold text-gray-800 mb-4">Team Corpuses</h2>
           <ul className="divide-y divide-gray-100">
-            {teamProjects.map((p) => (
-              <li key={p.tenant_id}>
+            {teamCorpuses.map((c) => (
+              <li key={c.corpus_id}>
                 <Link
-                  to={`/projects/${p.tenant_id}`}
+                  to={`/corpuses/${c.corpus_id}`}
                   className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-1 px-1 rounded transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-400 font-mono">{p.tenant_id}</p>
+                    <p className="text-sm font-medium text-gray-900">{c.name}</p>
+                    <p className="text-xs text-gray-400 font-mono">{c.compound_name}</p>
                   </div>
                   <ArrowRight size={16} className="text-gray-400" />
                 </Link>

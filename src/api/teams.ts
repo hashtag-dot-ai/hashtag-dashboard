@@ -43,8 +43,6 @@ export const removeMember = (slug: string, user_id: number, token?: string | nul
     token,
   );
 
-// ---- team invite API ----
-
 export const createTeamInvite = (slug: string, token?: string | null) =>
   request<TeamInviteCreated>(
     `/mgmt/teams/${encodeURIComponent(slug)}/invites`,
@@ -76,8 +74,6 @@ export const acceptTeamInvite = (body: TeamInviteAccept, token?: string | null) 
     token,
   );
 
-// ---- team API key API ----
-
 export const createTeamKey = (slug: string, data: { description?: string }, token?: string | null) =>
   request<TeamKeyCreated>(
     `/mgmt/teams/${encodeURIComponent(slug)}/keys`,
@@ -95,9 +91,9 @@ export const revokeTeamKey = (slug: string, keyPrefix: string, token?: string | 
     token,
   );
 
-export const listTeamProjects = (slug: string, token?: string | null) =>
-  request<{ tenant_id: string; name: string }[]>(
-    `/mgmt/teams/${encodeURIComponent(slug)}/projects`,
+export const listTeamCorpuses = (slug: string, token?: string | null) =>
+  request<{ corpus_id: string; compound_name: string; name: string }[]>(
+    `/mgmt/teams/${encodeURIComponent(slug)}/corpuses`,
     {},
     token,
   );
