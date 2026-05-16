@@ -48,7 +48,7 @@ export default function Dashboard() {
       } else if (result.management_key) {
         setAuth(result);
         setKeyVisible(false);
-        toast.success('Management key rotated. The previous key is now invalid.');
+        toast.success('User key rotated. The previous key is now invalid.');
       }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to rotate key');
@@ -100,13 +100,13 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Management Key */}
+      {/* User Key */}
       <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-semibold text-gray-800">Management Key</h2>
+            <h2 className="font-semibold text-gray-800">User Key</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Bearer token for all <code className="font-mono">/mgmt</code> API calls
+              Sent as <code className="font-mono">x-api-key</code> for all <code className="font-mono">/mgmt</code> calls and owned project endpoints
             </p>
           </div>
           <button
@@ -135,7 +135,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-            No management key available — log in again to generate one.
+            No user key available — log in again to generate one.
           </p>
         )}
 

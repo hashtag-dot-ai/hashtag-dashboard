@@ -4,7 +4,7 @@ const BASE = 'http://localhost:8000';
 
 export const handlers = [
   // Auth
-  http.post(`${BASE}/mgmt/auth/me`, () =>
+  http.post(`${BASE}/auth/me`, () =>
     HttpResponse.json({
       user_id: 1,
       email: 'dev@example.com',

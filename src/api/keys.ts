@@ -1,19 +1,19 @@
-import { request } from './client';
+import { mgmtRequest } from './client';
 import type { KeyOut, KeyCreate, KeyCreated } from '@/types/api';
 
-export const listKeys = (tenant_id: string, token?: string | null) =>
-  request<KeyOut[]>(`/mgmt/projects/${encodeURIComponent(tenant_id)}/keys`, {}, token);
+export const listKeys = (tenant_id: string, userKey?: string | null) =>
+  mgmtRequest<KeyOut[]>(`/mgmt/projects/${encodeURIComponent(tenant_id)}/keys`, {}, userKey);
 
-export const createKey = (tenant_id: string, data: KeyCreate, token?: string | null) =>
-  request<KeyCreated>(
+export const createKey = (tenant_id: string, data: KeyCreate, userKey?: string | null) =>
+  mgmtRequest<KeyCreated>(
     `/mgmt/projects/${encodeURIComponent(tenant_id)}/keys`,
     { method: 'POST', body: JSON.stringify(data) },
-    token,
+    userKey,
   );
 
-export const revokeKey = (tenant_id: string, key_prefix: string, token?: string | null) =>
-  request<void>(
+export const revokeKey = (tenant_id: string, key_prefix: string, userKey?: string | null) =>
+  mgmtRequest<void>(
     `/mgmt/projects/${encodeURIComponent(tenant_id)}/keys/${encodeURIComponent(key_prefix)}`,
     { method: 'DELETE' },
-    token,
+    userKey,
   );

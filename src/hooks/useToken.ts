@@ -2,7 +2,7 @@ import { DEV_BYPASS } from '@/config';
 import { useUser } from '@/context/UserContext';
 
 /**
- * Returns a function that resolves to the management key for the current user.
+ * Returns a function that resolves to the user key for the current user.
  * In dev bypass mode (VITE_DEV_BYPASS_AUTH=true), always resolves to null
  * so the backend accepts the request without authentication.
  */

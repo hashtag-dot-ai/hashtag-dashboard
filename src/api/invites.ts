@@ -1,22 +1,22 @@
-import { request } from './client';
+import { mgmtRequest } from './client';
 import type { InviteOut, InviteCreated, InviteAccept, InviteAcceptResult, ProjectMemberOut } from '@/types/api';
 
-export const createInvite = (tenantId: string, token?: string | null) =>
-  request<InviteCreated>(
+export const createInvite = (tenantId: string, userKey?: string | null) =>
+  mgmtRequest<InviteCreated>(
     `/mgmt/projects/${encodeURIComponent(tenantId)}/invites`,
     { method: 'POST' },
-    token,
+    userKey,
   );
 
-export const listInvites = (tenantId: string, token?: string | null) =>
-  request<InviteOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/invites`, {}, token);
+export const listInvites = (tenantId: string, userKey?: string | null) =>
+  mgmtRequest<InviteOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/invites`, {}, userKey);
 
-export const listMembers = (tenantId: string, token?: string | null) =>
-  request<ProjectMemberOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/members`, {}, token);
+export const listMembers = (tenantId: string, userKey?: string | null) =>
+  mgmtRequest<ProjectMemberOut[]>(`/mgmt/projects/${encodeURIComponent(tenantId)}/members`, {}, userKey);
 
-export const acceptInvite = (body: InviteAccept, token?: string | null) =>
-  request<InviteAcceptResult>(
+export const acceptInvite = (body: InviteAccept, userKey?: string | null) =>
+  mgmtRequest<InviteAcceptResult>(
     '/mgmt/projects/invites/accept',
     { method: 'POST', body: JSON.stringify(body) },
-    token,
+    userKey,
   );

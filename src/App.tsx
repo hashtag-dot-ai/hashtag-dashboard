@@ -15,7 +15,7 @@ import AcceptInvite from '@/pages/AcceptInvite';
 
 /**
  * Syncs Auth0 state → UserContext after OAuth redirect.
- * Calls /mgmt/auth/me to exchange the JWT for a management key.
+ * Calls /auth/me to exchange the JWT for a user key.
  * Skipped if user is already restored from localStorage.
  */
 function AuthSync() {
