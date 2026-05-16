@@ -29,7 +29,7 @@ export default function Layout() {
     }
   };
 
-  const displayName = auth0User?.name ?? appUser?.email ?? appUser?.auth0_sub ?? '';
+  const displayName = auth0User?.name ?? appUser?.email ?? '';
   const displayEmail = auth0User?.email ?? appUser?.email ?? '';
   const initials = (auth0User?.name ?? displayEmail).charAt(0).toUpperCase() || 'U';
 

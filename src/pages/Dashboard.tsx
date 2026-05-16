@@ -1,11 +1,17 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, ArrowRight } from 'lucide-react';
+import { Plus, ArrowRight, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useToken } from '@/hooks/useToken';
+import { me } from '@/api/auth';
 import { getBilling } from '@/api/billing';
 import { listProjects } from '@/api/projects';
 import { useUser } from '@/context/UserContext';
+import { DEV_BYPASS } from '@/config';
 import CreditBar from '@/components/CreditBar';
+import CopyButton from '@/components/CopyButton';
 
 const PLAN_LABELS = { free: 'Free', business: 'Business', enterprise: 'Enterprise' };
 const PLAN_BADGE: Record<string, string> = {
@@ -15,8 +21,12 @@ const PLAN_BADGE: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const { user } = useUser();
+  const { user, setAuth } = useUser();
   const getToken = useToken();
+  const { getAccessTokenSilently } = useAuth0();
+
+  const [keyVisible, setKeyVisible] = useState(false);
+  const [rotating, setRotating] = useState(false);
 
   const { data: billing } = useQuery({
     queryKey: ['billing'],
@@ -27,6 +37,30 @@ export default function Dashboard() {
     queryKey: ['projects'],
     queryFn: async () => listProjects(await getToken()),
   });
+
+  const handleRotate = async () => {
+    setRotating(true);
+    try {
+      const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
+      const result = await me(authToken);
+      if (result.warning) {
+        toast.warning(result.warning, { duration: 10000 });
+      } else if (result.management_key) {
+        setAuth(result);
+        setKeyVisible(false);
+        toast.success('Management key rotated. The previous key is now invalid.');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to rotate key');
+    } finally {
+      setRotating(false);
+    }
+  };
+
+  const managementKey = user?.management_key ?? null;
+  const maskedKey = managementKey
+    ? managementKey.slice(0, managementKey.indexOf('-', 'hashtag-user-key-'.length) + 9) + '•••'
+    : null;
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -64,6 +98,50 @@ export default function Dashboard() {
         ) : (
           <div className="h-8 bg-gray-100 rounded animate-pulse" />
         )}
+      </div>
+
+      {/* Management Key */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-800">Management Key</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Bearer token for all <code className="font-mono">/mgmt</code> API calls
+            </p>
+          </div>
+          <button
+            onClick={handleRotate}
+            disabled={rotating}
+            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40"
+          >
+            <RefreshCw size={13} className={rotating ? 'animate-spin' : ''} />
+            {rotating ? 'Rotating…' : 'Rotate key'}
+          </button>
+        </div>
+
+        {managementKey ? (
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-gray-50 border border-gray-200 rounded px-3 py-2 text-xs font-mono text-gray-700 truncate select-all">
+              {keyVisible ? managementKey : maskedKey}
+            </code>
+            <button
+              onClick={() => setKeyVisible((v) => !v)}
+              title={keyVisible ? 'Hide key' : 'Reveal key'}
+              className="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              {keyVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+            <CopyButton value={managementKey} />
+          </div>
+        ) : (
+          <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            No management key available — log in again to generate one.
+          </p>
+        )}
+
+        <p className="text-xs text-gray-400">
+          This key is stored in your browser. Rotating it invalidates the previous key immediately.
+        </p>
       </div>
 
       {/* Projects */}
@@ -111,7 +189,6 @@ export default function Dashboard() {
           </ul>
         )}
       </div>
-
     </div>
   );
 }
