@@ -10,8 +10,13 @@ export default function Login() {
 
   const handleDevLogin = async () => {
     try {
-      const user = await me(null);
-      setAuth(user);
+      const result = await me(null);
+      if (result.warning) {
+        toast.warning(result.warning, { duration: 10000 });
+      }
+      if (result.management_key) {
+        setAuth(result);
+      }
     } catch (err) {
       toast.error('Failed to connect to backend. Is it running on localhost:8000?');
       console.error(err);

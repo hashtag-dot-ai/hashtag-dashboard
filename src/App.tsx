@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
-import { Toaster } from 'sonner';
+import { Toaster, toast } from 'sonner';
 import { UserProvider, useUser } from '@/context/UserContext';
 import { me } from '@/api/auth';
 import { DEV_BYPASS } from '@/config';
@@ -11,14 +11,12 @@ import Dashboard from '@/pages/Dashboard';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
 import Billing from '@/pages/Billing';
-import Teams from '@/pages/Teams';
-import TeamDetail from '@/pages/TeamDetail';
 import AcceptInvite from '@/pages/AcceptInvite';
 
 /**
- * Syncs Auth0 state → our UserContext after OAuth redirect.
- * When Auth0 finishes loading and says isAuthenticated=true but
- * we have no user record yet, exchange the token for a user via /mgmt/auth/me.
+ * Syncs Auth0 state → UserContext after OAuth redirect.
+ * Calls /mgmt/auth/me to exchange the JWT for a management key.
+ * Skipped if user is already restored from localStorage.
  */
 function AuthSync() {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
@@ -29,7 +27,14 @@ function AuthSync() {
 
     getAccessTokenSilently()
       .then((token) => me(token))
-      .then(setAuth)
+      .then((result) => {
+        if (result.warning) {
+          toast.warning(result.warning, { duration: 10000 });
+        }
+        if (result.management_key) {
+          setAuth(result);
+        }
+      })
       .catch(console.error);
   }, [isAuthenticated, isLoading, user]);
 
@@ -40,8 +45,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoading: auth0Loading, isAuthenticated } = useAuth0();
   const { user } = useUser();
 
-  // While Auth0 is processing the redirect callback, show a spinner
-  // rather than immediately bouncing to /login.
   if (!DEV_BYPASS && (auth0Loading || (isAuthenticated && !user))) {
     return (
       <div className="flex h-screen items-center justify-center text-gray-400">
@@ -76,8 +79,6 @@ function AppRoutes() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:tenantId" element={<ProjectDetail />} />
         <Route path="/billing" element={<Billing />} />
-        <Route path="/teams" element={<Teams />} />
-        <Route path="/teams/:slug" element={<TeamDetail />} />
       </Route>
     </Routes>
   );

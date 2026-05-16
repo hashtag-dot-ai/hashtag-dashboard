@@ -7,18 +7,18 @@ export const handlers = [
   http.post(`${BASE}/mgmt/auth/me`, () =>
     HttpResponse.json({
       user_id: 1,
-      auth0_sub: 'dev|1',
       email: 'dev@example.com',
       plan: 'free',
       credits_remaining: 87,
+      management_key: 'hashtag-user-key-testkey1',
     }),
   ),
 
   // Projects
   http.get(`${BASE}/mgmt/projects/`, () =>
     HttpResponse.json([
-      { tenant_id: 'my-project', name: 'My Project', default_schema: null, default_prompt: null },
-      { tenant_id: 'second-proj', name: 'Second Project', default_schema: null, default_prompt: null },
+      { tenant_id: 'my-project', name: 'My Project', default_schema: null, default_prompt: null, is_owner: true },
+      { tenant_id: 'second-proj', name: 'Second Project', default_schema: null, default_prompt: null, is_owner: false },
     ]),
   ),
 
@@ -33,7 +33,7 @@ export const handlers = [
   http.post(`${BASE}/mgmt/projects/`, async ({ request }) => {
     const body = await request.json() as { name: string; tenant_id: string };
     return HttpResponse.json(
-      { tenant_id: body.tenant_id, name: body.name, default_schema: null, default_prompt: null },
+      { tenant_id: body.tenant_id, name: body.name, default_schema: null, default_prompt: null, is_owner: true },
       { status: 201 },
     );
   }),
@@ -44,6 +44,7 @@ export const handlers = [
       name: 'My Project',
       default_schema: null,
       default_prompt: null,
+      is_owner: true,
     }),
   ),
 
@@ -54,6 +55,7 @@ export const handlers = [
       name: body.name ?? 'My Project',
       default_schema: body.default_schema ?? null,
       default_prompt: body.default_prompt ?? null,
+      is_owner: true,
     });
   }),
 
@@ -75,7 +77,7 @@ export const handlers = [
         description: body.description ?? null,
         rate_limit: null,
         revoked: false,
-        raw_key: 'hk_new1234__supersecretkey',
+        raw_key: 'hk_new1234__supersecretkeyvalue',
       },
       { status: 201 },
     );
@@ -84,6 +86,31 @@ export const handlers = [
   http.delete(`${BASE}/mgmt/projects/:tenantId/keys/:prefix`, () =>
     new HttpResponse(null, { status: 204 }),
   ),
+
+  // Invites & members
+  http.get(`${BASE}/mgmt/projects/:tenantId/invites`, () => HttpResponse.json([])),
+
+  http.post(`${BASE}/mgmt/projects/:tenantId/invites`, () =>
+    HttpResponse.json(
+      { key_prefix: 'hk_inv123', created_at: new Date().toISOString(), raw_token: 'hk_inv123__token' },
+      { status: 201 },
+    ),
+  ),
+
+  http.get(`${BASE}/mgmt/projects/:tenantId/members`, () =>
+    HttpResponse.json([
+      { user_id: 1, email: 'dev@example.com', role: 'owner', joined_at: null },
+    ]),
+  ),
+
+  http.post(`${BASE}/mgmt/projects/invites/accept`, async ({ request }) => {
+    const body = await request.json() as { token: string };
+    return HttpResponse.json({
+      tenant_id: 'my-project',
+      project_name: 'My Project',
+      already_member: body.token === 'existing-token',
+    });
+  }),
 
   // Billing
   http.get(`${BASE}/mgmt/billing/`, () =>
@@ -104,43 +131,4 @@ export const handlers = [
       operation_costs: { query: 2, create_doc: 10, deep_query: 3, fast_query: 1 },
     });
   }),
-
-  // Teams
-  http.get(`${BASE}/mgmt/teams/`, () =>
-    HttpResponse.json([{ slug: 'acme-team', name: 'Acme Team' }]),
-  ),
-
-  http.get(`${BASE}/mgmt/teams/check/:slug`, ({ params }) => {
-    const taken = ['taken-slug'];
-    const available = !taken.includes(params.slug as string);
-    return HttpResponse.json({ available });
-  }),
-
-  http.post(`${BASE}/mgmt/teams/`, async ({ request }) => {
-    const body = await request.json() as { slug: string; name: string };
-    return HttpResponse.json({ slug: body.slug, name: body.name }, { status: 201 });
-  }),
-
-  http.get(`${BASE}/mgmt/teams/:slug`, ({ params }) =>
-    HttpResponse.json({ slug: params.slug, name: 'Acme Team' }),
-  ),
-
-  http.get(`${BASE}/mgmt/teams/:slug/members`, () =>
-    HttpResponse.json([
-      { team_slug: 'acme-team', user_id: 1, role: 'owner' },
-      { team_slug: 'acme-team', user_id: 2, role: 'member' },
-    ]),
-  ),
-
-  http.post(`${BASE}/mgmt/teams/:slug/members`, async ({ params, request }) => {
-    const body = await request.json() as { user_id: number; role: string };
-    return HttpResponse.json(
-      { team_slug: params.slug, user_id: body.user_id, role: body.role ?? 'member' },
-      { status: 201 },
-    );
-  }),
-
-  http.delete(`${BASE}/mgmt/teams/:slug/members/:userId`, () =>
-    new HttpResponse(null, { status: 204 }),
-  ),
 ];

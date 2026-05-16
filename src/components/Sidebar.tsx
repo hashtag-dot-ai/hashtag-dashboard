@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FolderKanban, CreditCard, Users, ExternalLink } from 'lucide-react';
+import { LayoutDashboard, FolderKanban, CreditCard, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { API_URL } from '@/config';
 
@@ -7,7 +7,6 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/billing', label: 'Billing', icon: CreditCard },
-  { to: '/teams', label: 'Teams', icon: Users },
 ];
 
 export default function Sidebar() {

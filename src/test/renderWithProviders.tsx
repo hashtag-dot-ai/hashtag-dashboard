@@ -46,10 +46,10 @@ export function renderWithProviders(ui: React.ReactElement, options: RenderOptio
 
   const loggedInUser: MeResponse = user ?? {
     user_id: 1,
-    auth0_sub: 'dev|1',
     email: 'dev@example.com',
     plan: 'free',
     credits_remaining: 87,
+    management_key: 'hashtag-user-key-testkey1',
   };
 
   function Wrapper({ children }: { children: React.ReactNode }) {

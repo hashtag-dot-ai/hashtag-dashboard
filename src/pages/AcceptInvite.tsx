@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUser } from '@/context/UserContext';
+import { me } from '@/api/auth';
 import { acceptInvite } from '@/api/invites';
 import { DEV_BYPASS } from '@/config';
 import type { InviteAcceptResult } from '@/types/api';
@@ -10,48 +11,64 @@ type Status = 'loading' | 'accepting' | 'success' | 'already_member' | 'error';
 
 export default function AcceptInvite() {
   const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
+  const inviteToken = searchParams.get('token');
 
   const { isAuthenticated, isLoading: auth0Loading, loginWithRedirect, getAccessTokenSilently } = useAuth0();
-  const { user } = useUser();
+  const { user, setAuth } = useUser();
 
   const [status, setStatus] = useState<Status>('loading');
   const [result, setResult] = useState<InviteAcceptResult | null>(null);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!token) {
+    if (!inviteToken) {
       setStatus('error');
       setError('No invite token found in the URL.');
       return;
     }
 
-    // In dev bypass mode, skip Auth0 entirely
     if (DEV_BYPASS) {
-      if (status === 'loading') doAccept(null);
+      if (status === 'loading') doAccept();
       return;
     }
 
-    if (auth0Loading) return; // wait for Auth0 to initialise
+    if (auth0Loading) return;
 
     if (!isAuthenticated) {
       loginWithRedirect({
-        appState: { returnTo: `/accept-invite?token=${encodeURIComponent(token)}` },
+        appState: { returnTo: `/accept-invite?token=${encodeURIComponent(inviteToken)}` },
       });
       return;
     }
 
-    // Authenticated but user record not yet created — AuthSync is running, wait for it
-    if (!user) return;
+    // Ensure we have a management key before accepting the invite.
+    // If not yet in context (e.g. page reload), fetch it first.
+    if (!user) {
+      getAccessTokenSilently()
+        .then((token) => me(token))
+        .then((result) => {
+          if (result.management_key) {
+            setAuth(result);
+          } else {
+            setStatus('error');
+            setError(result.warning ?? 'Could not get management key. Please try logging in again.');
+          }
+        })
+        .catch(() => {
+          setStatus('error');
+          setError('Failed to authenticate. Please try again.');
+        });
+      return;
+    }
 
-    if (status === 'loading') doAccept(null);
-  }, [token, auth0Loading, isAuthenticated, user, status]);
+    if (status === 'loading') doAccept();
+  }, [inviteToken, auth0Loading, isAuthenticated, user, status]);
 
-  async function doAccept(_unused: null) {
+  async function doAccept() {
     setStatus('accepting');
     try {
-      const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
-      const res = await acceptInvite({ token: token! }, authToken);
+      const authToken = DEV_BYPASS ? null : (user?.management_key ?? null);
+      const res = await acceptInvite({ token: inviteToken! }, authToken);
       setResult(res);
       setStatus(res.already_member ? 'already_member' : 'success');
     } catch (err) {

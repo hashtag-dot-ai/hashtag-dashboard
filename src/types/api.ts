@@ -5,11 +5,17 @@ export type KeyType = 'read_only' | 'read_write' | 'manage';
 export type MemberRole = 'owner' | 'admin' | 'member';
 
 export interface MeResponse {
-  user_id: number;
-  auth0_sub: string;
+  user_id?: number | null;
+  /** Canonical user identifier — shared across Auth0 accounts with the same email */
   email?: string | null;
-  plan: PlanType;
-  credits_remaining: number;
+  plan?: PlanType | null;
+  credits_remaining?: number | null;
+  /** Fresh management key (hashtag-user-key-…) — rotate on every login, use as Bearer token for /mgmt calls.
+   *  Null when email could not be determined; check `warning` for a user-facing message. */
+  management_key?: string | null;
+  /** Present when login partially succeeded but a management key could not be issued. Show to the user. */
+  warning?: string | null;
+  userinfo?: Record<string, unknown> | null;
 }
 
 export interface ProjectOut {
@@ -60,31 +66,6 @@ export interface BillingOut {
 
 export interface PlanUpdate {
   plan: PlanType;
-}
-
-export interface TeamOut {
-  slug: string;
-  name: string;
-}
-
-export interface TeamCreate {
-  slug: string;
-  name: string;
-}
-
-export interface TeamUpdate {
-  name: string;
-}
-
-export interface MemberOut {
-  team_slug: string;
-  user_id: number;
-  role: MemberRole;
-}
-
-export interface MemberAdd {
-  user_id: number;
-  role?: MemberRole;
 }
 
 export interface AvailabilityCheck {

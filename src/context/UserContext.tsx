@@ -7,13 +7,29 @@ interface UserContextValue {
   clearAuth: () => void;
 }
 
+const STORAGE_KEY = 'mgmt_user';
+
 const UserContext = createContext<UserContextValue | null>(null);
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<MeResponse | null>(null);
+  const [user, setUser] = useState<MeResponse | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? (JSON.parse(stored) as MeResponse) : null;
+    } catch {
+      return null;
+    }
+  });
 
-  const setAuth = (u: MeResponse) => setUser(u);
-  const clearAuth = () => setUser(null);
+  const setAuth = (u: MeResponse) => {
+    setUser(u);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+  };
+
+  const clearAuth = () => {
+    setUser(null);
+    localStorage.removeItem(STORAGE_KEY);
+  };
 
   return (
     <UserContext.Provider value={{ user, setAuth, clearAuth }}>

@@ -3,18 +3,18 @@ import { me } from '@/api/auth';
 import { listProjects, checkTenantId, createProject } from '@/api/projects';
 import { listKeys, createKey, revokeKey } from '@/api/keys';
 import { getBilling, setPlan } from '@/api/billing';
-import { listTeams, createTeam, checkSlug } from '@/api/teams';
 import { ApiError } from '@/api/client';
 
 // MSW intercepts all fetch calls — handlers defined in src/test/handlers.ts
 
 describe('auth API', () => {
-  it('me() returns a user record', async () => {
+  it('me() returns a user record with a management key', async () => {
     const user = await me(null);
     expect(user.user_id).toBe(1);
     expect(user.email).toBe('dev@example.com');
     expect(user.plan).toBe('free');
     expect(user.credits_remaining).toBe(87);
+    expect(user.management_key).toBeTruthy();
   });
 });
 
@@ -87,30 +87,6 @@ describe('billing API', () => {
   it('setPlan("enterprise") returns credits_limit=-1', async () => {
     const billing = await setPlan({ plan: 'enterprise' }, null);
     expect(billing.credits_limit).toBe(-1);
-  });
-});
-
-describe('teams API', () => {
-  it('listTeams() returns teams', async () => {
-    const teams = await listTeams(null);
-    expect(teams).toHaveLength(1);
-    expect(teams[0].slug).toBe('acme-team');
-  });
-
-  it('checkSlug() returns available=true for free slugs', async () => {
-    const result = await checkSlug('free-slug', null);
-    expect(result.available).toBe(true);
-  });
-
-  it('checkSlug() returns available=false for taken slugs', async () => {
-    const result = await checkSlug('taken-slug', null);
-    expect(result.available).toBe(false);
-  });
-
-  it('createTeam() returns the new team', async () => {
-    const team = await createTeam({ slug: 'my-team', name: 'My Team' }, null);
-    expect(team.slug).toBe('my-team');
-    expect(team.name).toBe('My Team');
   });
 });
 
