@@ -240,6 +240,7 @@ export default function KGGraph({ tenantId }: Props) {
         if (inputMode === 'text') setTextInput('');
         else if (inputMode === 'url') setUrlInput('');
         else { setFileData(''); setFileName(''); if (fileInputRef.current) fileInputRef.current.value = ''; }
+        refetch();
       }
     } catch (err) {
       updateLog(id, { status: 0, responseSummary: String(err) });
