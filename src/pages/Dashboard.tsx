@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { Plus, ArrowRight, Eye, EyeOff, RefreshCw } from 'lucide-react';
+import { Plus, ArrowRight, Eye, EyeOff, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useToken } from '@/hooks/useToken';
-import { me } from '@/api/auth';
+import { me, updateUsername } from '@/api/auth';
 import { getBilling } from '@/api/billing';
 import { listProjects } from '@/api/projects';
 import { useUser } from '@/context/UserContext';
@@ -27,6 +27,8 @@ export default function Dashboard() {
 
   const [keyVisible, setKeyVisible] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
 
   const { data: billing } = useQuery({
     queryKey: ['billing'],
@@ -56,6 +58,19 @@ export default function Dashboard() {
       setRotating(false);
     }
   };
+
+  const usernameMutation = useMutation({
+    mutationFn: async (newName: string) => {
+      if (!user?.management_key) throw new Error('No user key available');
+      return updateUsername(newName, user.management_key);
+    },
+    onSuccess: (data) => {
+      setAuth({ ...user!, user_name: data.user_name });
+      setEditingUsername(false);
+      toast.success('Username updated');
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const managementKey = user?.management_key ?? null;
   const maskedKey = managementKey
@@ -97,6 +112,61 @@ export default function Dashboard() {
           </>
         ) : (
           <div className="h-8 bg-gray-100 rounded animate-pulse" />
+        )}
+      </div>
+
+      {/* Username */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-800">Username</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Used in compound corpus names, e.g.{' '}
+              <code className="font-mono">{user?.user_name ?? '…'}:my-project</code>
+            </p>
+          </div>
+          {!editingUsername && (
+            <button
+              onClick={() => { setUsernameInput(user?.user_name ?? ''); setEditingUsername(true); }}
+              className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <Pencil size={13} /> Edit
+            </button>
+          )}
+        </div>
+
+        {editingUsername ? (
+          <div className="flex items-center gap-2 mt-3">
+            <input
+              type="text"
+              value={usernameInput}
+              onChange={(e) => setUsernameInput(e.target.value.toLowerCase())}
+              placeholder="your-username"
+              className="flex-1 border border-gray-300 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') usernameMutation.mutate(usernameInput);
+                if (e.key === 'Escape') setEditingUsername(false);
+              }}
+              autoFocus
+            />
+            <button
+              onClick={() => usernameMutation.mutate(usernameInput)}
+              disabled={usernameMutation.isPending || !usernameInput}
+              className="p-1.5 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 transition-colors"
+              title="Save"
+            >
+              <Check size={16} />
+            </button>
+            <button
+              onClick={() => setEditingUsername(false)}
+              className="p-1.5 rounded text-gray-400 hover:bg-gray-100 transition-colors"
+              title="Cancel"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        ) : (
+          <p className="mt-3 font-mono text-sm text-gray-800">{user?.user_name ?? '—'}</p>
         )}
       </div>
 
