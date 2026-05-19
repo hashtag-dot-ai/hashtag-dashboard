@@ -157,8 +157,9 @@ export default function ProjectDetail() {
     return <div className="text-red-500 text-sm">Project not found.</div>;
   }
 
-  const queryUrl = `${API_URL}/${tenantId}/query`;
-  const processUrl = `${API_URL}/${tenantId}/process`;
+  const apiId = project?.compound_name ?? tenantId!;
+  const queryUrl = `${API_URL}/${apiId}/query`;
+  const processUrl = `${API_URL}/${apiId}/process`;
 
   const TABS = [
     'overview', 'graph', 'keys', 'members', 'settings',
@@ -181,7 +182,9 @@ export default function ProjectDetail() {
 
       <div className="max-w-3xl mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
-        <p className="text-sm text-gray-400 font-mono mt-1">{project.tenant_id}</p>
+        <p className="text-sm text-gray-400 font-mono mt-1">
+          {project.compound_name ?? project.tenant_id}
+        </p>
       </div>
 
       <Tabs.Root defaultValue="overview">
@@ -212,13 +215,29 @@ export default function ProjectDetail() {
         <Tabs.Content value="overview">
           <div className="max-w-3xl space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-              <div>
-                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Project ID (immutable)</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <code className="text-sm font-mono text-gray-800">{project.tenant_id}</code>
-                  <CopyButton value={project.tenant_id} />
+              {project.compound_name && (
+                <div>
+                  <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Corpus name</label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="text-sm font-mono text-gray-800">{project.compound_name}</code>
+                    <CopyButton value={project.compound_name} />
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Use this in API calls: <code className="text-xs">/{project.compound_name}/query</code></p>
                 </div>
-              </div>
+              )}
+              {project.proj_perma_id && (
+                <>
+                  {project.compound_name && <hr className="border-gray-100" />}
+                  <div>
+                    <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Perma-ID</label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <code className="text-sm font-mono text-gray-800">{project.proj_perma_id}</code>
+                      <CopyButton value={project.proj_perma_id} />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">Stable across renames. Use as <code className="text-xs">id:{project.proj_perma_id}</code> in API calls.</p>
+                  </div>
+                </>
+              )}
               <hr className="border-gray-100" />
               <div>
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2 block">API Endpoints</label>
