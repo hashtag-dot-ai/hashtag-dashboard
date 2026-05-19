@@ -170,8 +170,8 @@ export default function Projects() {
         ) : (
           projects.map((p) => (
             <Link
-              key={p.tenant_id}
-              to={`/projects/${p.tenant_id}`}
+              key={p.proj_perma_id ?? p.tenant_id}
+              to={`/projects/${p.proj_perma_id ?? p.tenant_id}`}
               className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
             >
               <div>

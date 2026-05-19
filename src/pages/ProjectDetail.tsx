@@ -29,7 +29,7 @@ const KEY_TYPE_DESC: Record<KeyType, string> = {
 };
 
 export default function ProjectDetail() {
-  const { tenantId } = useParams<{ tenantId: string }>();
+  const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const getToken = useToken();
   const qc = useQueryClient();
@@ -48,10 +48,10 @@ export default function ProjectDetail() {
   const [settingsReady, setSettingsReady] = useState(false);
 
   const { data: project, isLoading } = useQuery({
-    queryKey: ['project', tenantId],
+    queryKey: ['project', projectId],
     queryFn: async () => {
       const token = await getToken();
-      const p = await getProject(tenantId!, token);
+      const p = await getProject(projectId!, token);
       if (!settingsReady) {
         setEditName(p.proj_display_name);
         setEditSchema(p.default_schema ?? '');
@@ -60,22 +60,22 @@ export default function ProjectDetail() {
       }
       return p;
     },
-    enabled: !!tenantId,
+    enabled: !!projectId,
   });
 
   const { data: keys, isLoading: keysLoading } = useQuery({
-    queryKey: ['keys', tenantId],
-    queryFn: async () => listKeys(tenantId!, await getToken()),
-    enabled: !!tenantId,
+    queryKey: ['keys', projectId],
+    queryFn: async () => listKeys(projectId!, await getToken()),
+    enabled: !!projectId,
   });
 
   const createKeyMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return createKey(tenantId!, { key_type: keyType, description: keyDesc || undefined }, token);
+      return createKey(projectId!, { key_type: keyType, description: keyDesc || undefined }, token);
     },
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['keys', tenantId] });
+      qc.invalidateQueries({ queryKey: ['keys', projectId] });
       setShowCreateKey(false);
       setKeyDesc('');
       setNewRawKey(data);
@@ -84,40 +84,40 @@ export default function ProjectDetail() {
   });
 
   const revokeKeyMutation = useMutation({
-    mutationFn: async (prefix: string) => revokeKey(tenantId!, prefix, await getToken()),
+    mutationFn: async (prefix: string) => revokeKey(projectId!, prefix, await getToken()),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['keys', tenantId] });
+      qc.invalidateQueries({ queryKey: ['keys', projectId] });
       toast.success('Key revoked');
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const { data: members, isLoading: membersLoading } = useQuery({
-    queryKey: ['project-members', tenantId],
-    queryFn: async () => listMembers(tenantId!, await getToken()),
-    enabled: !!tenantId,
+    queryKey: ['project-members', projectId],
+    queryFn: async () => listMembers(projectId!, await getToken()),
+    enabled: !!projectId,
   });
 
   const { data: invites, isLoading: invitesLoading } = useQuery({
-    queryKey: ['invites', tenantId],
-    queryFn: async () => listInvites(tenantId!, await getToken()),
-    enabled: !!tenantId,
+    queryKey: ['invites', projectId],
+    queryFn: async () => listInvites(projectId!, await getToken()),
+    enabled: !!projectId,
   });
 
   const createInviteMutation = useMutation({
-    mutationFn: async () => createInvite(tenantId!, await getToken()),
+    mutationFn: async () => createInvite(projectId!, await getToken()),
     onSuccess: (data) => {
-      qc.invalidateQueries({ queryKey: ['invites', tenantId] });
-      qc.invalidateQueries({ queryKey: ['project-members', tenantId] });
+      qc.invalidateQueries({ queryKey: ['invites', projectId] });
+      qc.invalidateQueries({ queryKey: ['project-members', projectId] });
       setNewInvite(data);
     },
     onError: (err: Error) => toast.error(err.message),
   });
 
   const revokeInviteMutation = useMutation({
-    mutationFn: async (prefix: string) => revokeKey(tenantId!, prefix, await getToken()),
+    mutationFn: async (prefix: string) => revokeKey(projectId!, prefix, await getToken()),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['invites', tenantId] });
+      qc.invalidateQueries({ queryKey: ['invites', projectId] });
       toast.success('Invite revoked');
     },
     onError: (err: Error) => toast.error(err.message),
@@ -126,14 +126,14 @@ export default function ProjectDetail() {
   const updateMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return updateProject(tenantId!, {
+      return updateProject(projectId!, {
         proj_display_name: editName || undefined,
         default_schema: editSchema || null,
         default_prompt: editPrompt || null,
       }, token);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['project', tenantId] });
+      qc.invalidateQueries({ queryKey: ['project', projectId] });
       qc.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Settings saved');
     },
@@ -141,7 +141,7 @@ export default function ProjectDetail() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async () => deleteProject(tenantId!, await getToken()),
+    mutationFn: async () => deleteProject(projectId!, await getToken()),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] });
       toast.success('Project deleted');
@@ -157,7 +157,7 @@ export default function ProjectDetail() {
     return <div className="text-red-500 text-sm">Project not found.</div>;
   }
 
-  const apiId = project?.compound_name ?? tenantId!;
+  const apiId = project.compound_name ?? `id:${project.proj_perma_id ?? projectId}`;
   const queryUrl = `${API_URL}/${apiId}/query`;
   const processUrl = `${API_URL}/${apiId}/process`;
 
@@ -208,7 +208,7 @@ export default function ProjectDetail() {
 
         {/* Graph — no max-w constraint so the canvas can fill available width */}
         <Tabs.Content value="graph">
-          <KGGraph tenantId={tenantId!} />
+          <KGGraph apiId={apiId} />
         </Tabs.Content>
 
         {/* Overview */}
@@ -529,18 +529,18 @@ export default function ProjectDetail() {
                 This permanently deletes the project and all its API keys. This action cannot be undone.
               </p>
               <p className="text-sm text-gray-600">
-                Type <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{tenantId}</code> to confirm:
+                Type <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs font-mono">{project.tenant_id}</code> to confirm:
               </p>
               <input
                 type="text"
                 value={deleteConfirm}
                 onChange={(e) => setDeleteConfirm(e.target.value)}
-                placeholder={tenantId}
+                placeholder={project.tenant_id}
                 className="w-full border border-red-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-red-400"
               />
               <button
                 onClick={() => deleteMutation.mutate()}
-                disabled={deleteConfirm !== tenantId || deleteMutation.isPending}
+                disabled={deleteConfirm !== project.tenant_id || deleteMutation.isPending}
                 className="bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete project'}

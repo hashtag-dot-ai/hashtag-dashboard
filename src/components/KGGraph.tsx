@@ -144,11 +144,11 @@ function ApiKeyGate({ tenantId, onConnect }: { tenantId: string; onConnect: (key
 // ---------------------------------------------------------------------------
 
 interface Props {
-  tenantId: string;
+  apiId: string;
 }
 
-export default function KGGraph({ tenantId }: Props) {
-  const SESSION_KEY = `kg_graph_key_${tenantId}`;
+export default function KGGraph({ apiId }: Props) {
+  const SESSION_KEY = `kg_graph_key_${apiId}`;
   const { user } = useUser();
 
   // management_key auto-connects; sessionStorage key is the manual fallback
@@ -216,11 +216,11 @@ export default function KGGraph({ tenantId }: Props) {
       type = 'pdf'; url = fileData;
     }
 
-    const endpoint = `${API_URL}/${tenantId}/process`;
+    const endpoint = `${API_URL}/${apiId}/process`;
     const requestBody = JSON.stringify({ type, url });
     const id = addLog({
       method: 'POST',
-      endpoint: `/${tenantId}/process`,
+      endpoint: `/${apiId}/process`,
       requestSummary: requestBody,
       status: null,
       responseSummary: null,
@@ -250,8 +250,8 @@ export default function KGGraph({ tenantId }: Props) {
   };
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['graph', tenantId, include, effectiveKey],
-    queryFn:  () => fetchGraph(tenantId, { include }, effectiveKey!),
+    queryKey: ['graph', apiId, include, effectiveKey],
+    queryFn:  () => fetchGraph(apiId, { include }, effectiveKey!),
     enabled:  !!effectiveKey,
     staleTime: 60_000,
     retry: false,
@@ -276,7 +276,7 @@ export default function KGGraph({ tenantId }: Props) {
   if (!effectiveKey) {
     return (
       <div className="border border-gray-200 rounded-xl bg-white" style={{ height: '520px' }}>
-        <ApiKeyGate tenantId={tenantId} onConnect={handleConnect} />
+        <ApiKeyGate tenantId={apiId} onConnect={handleConnect} />
       </div>
     );
   }

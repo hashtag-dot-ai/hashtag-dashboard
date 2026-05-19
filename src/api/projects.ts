@@ -10,19 +10,19 @@ export const checkTenantId = (tenant_id: string, userKey?: string | null) =>
 export const createProject = (data: ProjectCreate, userKey?: string | null) =>
   mgmtRequest<ProjectOut>('/mgmt/projects/', { method: 'POST', body: JSON.stringify(data) }, userKey);
 
-export const getProject = (tenant_id: string, userKey?: string | null) =>
-  mgmtRequest<ProjectOut>(`/mgmt/projects/${encodeURIComponent(tenant_id)}`, {}, userKey);
+export const getProject = (projectId: string, userKey?: string | null) =>
+  mgmtRequest<ProjectOut>(`/mgmt/projects/${encodeURIComponent(projectId)}`, {}, userKey);
 
-export const updateProject = (tenant_id: string, data: ProjectUpdate, userKey?: string | null) =>
+export const updateProject = (projectId: string, data: ProjectUpdate, userKey?: string | null) =>
   mgmtRequest<ProjectOut>(
-    `/mgmt/projects/${encodeURIComponent(tenant_id)}`,
+    `/mgmt/projects/${encodeURIComponent(projectId)}`,
     { method: 'PATCH', body: JSON.stringify(data) },
     userKey,
   );
 
-export const deleteProject = (tenant_id: string, userKey?: string | null) =>
+export const deleteProject = (projectId: string, userKey?: string | null) =>
   mgmtRequest<void>(
-    `/mgmt/projects/${encodeURIComponent(tenant_id)}`,
+    `/mgmt/projects/${encodeURIComponent(projectId)}`,
     { method: 'DELETE' },
     userKey,
   );

@@ -77,7 +77,7 @@ function AppRoutes() {
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
-        <Route path="/projects/:tenantId" element={<ProjectDetail />} />
+        <Route path="/projects/:projectId" element={<ProjectDetail />} />
         <Route path="/billing" element={<Billing />} />
       </Route>
     </Routes>

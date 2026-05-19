@@ -243,9 +243,9 @@ export default function Dashboard() {
         ) : (
           <ul className="divide-y divide-gray-100">
             {projects.map((p) => (
-              <li key={p.tenant_id}>
+              <li key={p.proj_perma_id ?? p.tenant_id}>
                 <Link
-                  to={`/projects/${p.tenant_id}`}
+                  to={`/projects/${p.proj_perma_id ?? p.tenant_id}`}
                   className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-1 px-1 rounded transition-colors"
                 >
                   <div>
