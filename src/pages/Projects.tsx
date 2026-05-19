@@ -33,7 +33,7 @@ export default function Projects() {
   const createMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return createProject({ name: name.trim(), tenant_id: tenantId }, token);
+      return createProject({ proj_display_name: name.trim(), tenant_id: tenantId }, token);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] });
@@ -175,8 +175,8 @@ export default function Projects() {
               className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
             >
               <div>
-                <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{p.tenant_id}</p>
+                <p className="text-sm font-medium text-gray-900">{p.proj_display_name}</p>
+                <p className="text-xs text-gray-400 font-mono mt-0.5">{p.compound_name ?? p.tenant_id}</p>
               </div>
               <ArrowRight size={16} className="text-gray-400" />
             </Link>

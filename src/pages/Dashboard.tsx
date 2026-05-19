@@ -179,8 +179,8 @@ export default function Dashboard() {
                   className="flex items-center justify-between py-3 hover:bg-gray-50 -mx-1 px-1 rounded transition-colors"
                 >
                   <div>
-                    <p className="text-sm font-medium text-gray-900">{p.name}</p>
-                    <p className="text-xs text-gray-400 font-mono">{p.tenant_id}</p>
+                    <p className="text-sm font-medium text-gray-900">{p.proj_display_name}</p>
+                    <p className="text-xs text-gray-400 font-mono">{p.compound_name ?? p.tenant_id}</p>
                   </div>
                   <ArrowRight size={16} className="text-gray-400" />
                 </Link>

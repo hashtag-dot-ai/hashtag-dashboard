@@ -53,7 +53,7 @@ export default function ProjectDetail() {
       const token = await getToken();
       const p = await getProject(tenantId!, token);
       if (!settingsReady) {
-        setEditName(p.name);
+        setEditName(p.proj_display_name);
         setEditSchema(p.default_schema ?? '');
         setEditPrompt(p.default_prompt ?? '');
         setSettingsReady(true);
@@ -127,7 +127,7 @@ export default function ProjectDetail() {
     mutationFn: async () => {
       const token = await getToken();
       return updateProject(tenantId!, {
-        name: editName || undefined,
+        proj_display_name: editName || undefined,
         default_schema: editSchema || null,
         default_prompt: editPrompt || null,
       }, token);
@@ -181,7 +181,7 @@ export default function ProjectDetail() {
       {newInvite && <InviteLinkModal rawToken={newInvite.raw_token} onClose={() => setNewInvite(null)} />}
 
       <div className="max-w-3xl mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{project.name}</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{project.proj_display_name}</h1>
         <p className="text-sm text-gray-400 font-mono mt-1">
           {project.compound_name ?? project.tenant_id}
         </p>

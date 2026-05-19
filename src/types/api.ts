@@ -24,21 +24,24 @@ export interface ProjectOut {
   tenant_id: string;
   /** Permanent UUID identifier ('proj-…') — use as 'id:{proj_perma_id}' in API calls */
   proj_perma_id?: string | null;
-  /** Compound name 'owner_username:project_name' — preferred identifier for API calls */
+  /** Compound name 'owner_username:tenant_id' — preferred identifier for API calls */
   compound_name?: string | null;
-  name: string;
+  /** Human-readable display name (may contain spaces — not used in API calls) */
+  proj_display_name: string;
   default_schema?: string | null;
   default_prompt?: string | null;
   is_owner: boolean;
 }
 
 export interface ProjectCreate {
-  name: string;
+  /** Human-readable display name (may contain spaces) */
+  proj_display_name: string;
   tenant_id: string;
 }
 
 export interface ProjectUpdate {
-  name?: string | null;
+  /** Human-readable display name (may contain spaces) */
+  proj_display_name?: string | null;
   default_schema?: string | null;
   default_prompt?: string | null;
 }
