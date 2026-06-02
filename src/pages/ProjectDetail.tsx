@@ -157,7 +157,7 @@ export default function ProjectDetail() {
     return <div className="text-red-500 text-sm">Project not found.</div>;
   }
 
-  const apiId = project.compound_name ?? `id:${project.proj_perma_id ?? projectId}`;
+  const apiId = project.compound_name ?? `id/${project.proj_perma_id ?? projectId}`;
   const queryUrl = `${API_URL}/${apiId}/query`;
   const processUrl = `${API_URL}/${apiId}/process`;
 
@@ -234,7 +234,7 @@ export default function ProjectDetail() {
                       <code className="text-sm font-mono text-gray-800">{project.proj_perma_id}</code>
                       <CopyButton value={project.proj_perma_id} />
                     </div>
-                    <p className="text-xs text-gray-400 mt-1">Stable across renames. Use as <code className="text-xs">id:{project.proj_perma_id}</code> in API calls.</p>
+                    <p className="text-xs text-gray-400 mt-1">Stable across renames. Use as <code className="text-xs">id/{project.proj_perma_id}</code> in API calls.</p>
                   </div>
                 </>
               )}

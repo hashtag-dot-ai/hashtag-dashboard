@@ -7,7 +7,7 @@ export interface GraphQueryParams {
   limit?: number;
 }
 
-/** Call GET /{tenant_id}/graph using an x-api-key (knowledge API, not mgmt API). */
+/** Call GET /{user_name}/{proj_slug}/graph or /id/{proj_perma_id}/graph using an x-api-key (knowledge API, not mgmt API). */
 export async function fetchGraph(
   tenantId: string,
   params: GraphQueryParams = {},

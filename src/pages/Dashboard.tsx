@@ -122,7 +122,7 @@ export default function Dashboard() {
             <h2 className="font-semibold text-gray-800">Username</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Used in compound corpus names, e.g.{' '}
-              <code className="font-mono">{user?.user_name ?? '…'}:my-project</code>
+              <code className="font-mono">{user?.user_name ?? '…'}/my-project</code>
             </p>
           </div>
           {!editingUsername && (

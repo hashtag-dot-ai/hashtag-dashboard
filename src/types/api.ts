@@ -6,7 +6,7 @@ export type MemberRole = 'owner' | 'admin' | 'member';
 
 export interface MeResponse {
   user_id?: number | null;
-  /** Public username slug used in compound corpus names, e.g. 'alice' in 'alice:my-project' */
+  /** Public username slug used in compound corpus names, e.g. 'alice' in 'alice/my-project' */
   user_name?: string | null;
   /** Canonical user identifier — shared across Auth0 accounts with the same email */
   email?: string | null;
@@ -22,9 +22,9 @@ export interface MeResponse {
 
 export interface ProjectOut {
   tenant_id: string;
-  /** Permanent UUID identifier ('proj-…') — use as 'id:{proj_perma_id}' in API calls */
+  /** Permanent UUID identifier ('proj-…') — use as '/id/{proj_perma_id}' in API calls */
   proj_perma_id?: string | null;
-  /** Compound name 'owner_username:tenant_id' — preferred identifier for API calls */
+  /** Compound path 'owner_username/tenant_id' — use directly in API calls: /{compound_name}/query */
   compound_name?: string | null;
   /** Human-readable display name (may contain spaces — not used in API calls) */
   proj_display_name: string;
