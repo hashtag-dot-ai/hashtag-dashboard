@@ -22,8 +22,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   });
 
   const setAuth = (u: MeResponse) => {
-    setUser(u);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+    // Preserve the stored management_key if the server didn't return a new one
+    // (existing users get management_key: null on login once a key already exists).
+    const merged = u.management_key
+      ? u
+      : { ...u, management_key: user?.management_key ?? null };
+    setUser(merged);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   };
 
   const clearAuth = () => {

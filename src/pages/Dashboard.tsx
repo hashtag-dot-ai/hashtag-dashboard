@@ -3,13 +3,11 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { Plus, ArrowRight, Eye, EyeOff, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth0 } from '@auth0/auth0-react';
 import { useToken } from '@/hooks/useToken';
-import { me, updateUsername } from '@/api/auth';
+import { rotateKey, updateUsername } from '@/api/auth';
 import { getBilling } from '@/api/billing';
 import { listProjects } from '@/api/projects';
 import { useUser } from '@/context/UserContext';
-import { DEV_BYPASS } from '@/config';
 import CreditBar from '@/components/CreditBar';
 import CopyButton from '@/components/CopyButton';
 
@@ -23,8 +21,6 @@ const PLAN_BADGE: Record<string, string> = {
 export default function Dashboard() {
   const { user, setAuth } = useUser();
   const getToken = useToken();
-  const { getAccessTokenSilently } = useAuth0();
-
   const [keyVisible, setKeyVisible] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
@@ -43,11 +39,8 @@ export default function Dashboard() {
   const handleRotate = async () => {
     setRotating(true);
     try {
-      const authToken = DEV_BYPASS ? null : await getAccessTokenSilently();
-      const result = await me(authToken);
-      if (result.warning) {
-        toast.warning(result.warning, { duration: 10000 });
-      } else if (result.management_key) {
+      const result = await rotateKey(await getToken());
+      if (result.management_key) {
         setAuth(result);
         setKeyVisible(false);
         toast.success('User key rotated. The previous key is now invalid.');
