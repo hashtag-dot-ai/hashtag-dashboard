@@ -1,6 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
+import { useUser } from '@/context/UserContext';
 import { getBilling } from '@/api/billing';
+import { rotateKey } from '@/api/auth';
 import CreditBar from '@/components/CreditBar';
 
 const PLANS: { type: string; label: string; credits: string }[] = [
@@ -18,6 +22,20 @@ const OP_LABELS: Record<string, string> = {
 
 export default function Billing() {
   const getToken = useToken();
+  const { setAuth } = useUser();
+  const qc = useQueryClient();
+  const [confirmRotate, setConfirmRotate] = useState(false);
+
+  const rotateMutation = useMutation({
+    mutationFn: async () => rotateKey((await getToken()) ?? ''),
+    onSuccess: (data) => {
+      if (data.management_key) setAuth(data);
+      qc.invalidateQueries({ queryKey: ['billing'] });
+      toast.success('API key rotated — update any agents or scripts using the old key.');
+      setConfirmRotate(false);
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
 
   const { data: billing, isLoading } = useQuery({
     queryKey: ['billing'],
@@ -80,6 +98,40 @@ export default function Billing() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* API key rotation */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+        <h2 className="font-semibold text-gray-800">API key</h2>
+        <p className="text-sm text-gray-500">
+          Your management key is used by agents and scripts to access the API. Rotating it
+          will immediately invalidate all existing keys — update any integrations afterwards.
+        </p>
+        {confirmRotate ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-red-600 font-medium">This will break existing integrations. Are you sure?</span>
+            <button
+              onClick={() => rotateMutation.mutate()}
+              disabled={rotateMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+            >
+              {rotateMutation.isPending ? 'Rotating…' : 'Yes, rotate'}
+            </button>
+            <button
+              onClick={() => setConfirmRotate(false)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setConfirmRotate(true)}
+            className="border border-red-300 hover:bg-red-50 text-red-600 px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            Rotate API key
+          </button>
+        )}
       </div>
     </div>
   );

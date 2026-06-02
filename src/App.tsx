@@ -20,11 +20,9 @@ import AcceptInvite from '@/pages/AcceptInvite';
  */
 function AuthSync() {
   const { isAuthenticated, isLoading, getAccessTokenSilently } = useAuth0();
-  const { user, setAuth } = useUser();
+  const { user, setAuth, clearAuth } = useUser();
 
-  useEffect(() => {
-    if (DEV_BYPASS || isLoading || user || !isAuthenticated) return;
-
+  const fetchAndStoreKey = () => {
     getAccessTokenSilently()
       .then((token) => me(token))
       .then((result) => {
@@ -36,7 +34,25 @@ function AuthSync() {
         }
       })
       .catch(console.error);
+  };
+
+  // Initial auth: exchange Auth0 token for a management key if we don't have one.
+  useEffect(() => {
+    if (DEV_BYPASS || isLoading || user || !isAuthenticated) return;
+    fetchAndStoreKey();
   }, [isAuthenticated, isLoading, user]);
+
+  // When any mgmt request gets a 401, the stored key is stale (e.g. the user
+  // explicitly rotated it). Clear it and silently fetch a fresh one.
+  useEffect(() => {
+    if (DEV_BYPASS) return;
+    const handler = () => {
+      clearAuth();
+      if (isAuthenticated) fetchAndStoreKey();
+    };
+    window.addEventListener('mgmt-auth-error', handler);
+    return () => window.removeEventListener('mgmt-auth-error', handler);
+  }, [isAuthenticated]);
 
   return null;
 }

@@ -39,5 +39,12 @@ export async function mgmtRequest<T>(
 ): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (userKey) headers['x-api-key'] = userKey;
-  return _fetch<T>(path, options, headers);
+  try {
+    return await _fetch<T>(path, options, headers);
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) {
+      window.dispatchEvent(new CustomEvent('mgmt-auth-error'));
+    }
+    throw err;
+  }
 }

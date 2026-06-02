@@ -12,7 +12,8 @@ export interface MeResponse {
   email?: string | null;
   plan?: PlanType | null;
   credits_remaining?: number | null;
-  /** Fresh management key (hashtag-user-key-…) — rotate on every login, use as Bearer token for /mgmt calls.
+  /** Fresh management key (hashtag-user-key-…) — use as x-api-key for /mgmt calls.
+   *  Old keys are NOT revoked on login; use POST /auth/rotate-key to invalidate them.
    *  Null when email could not be determined; check `warning` for a user-facing message. */
   management_key?: string | null;
   /** Present when login partially succeeded but a management key could not be issued. Show to the user. */
