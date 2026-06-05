@@ -1,6 +1,8 @@
-# KG Frontend
+# Hashtag.ai Dashboard
 
-The web dashboard for [KG BaaS](https://hashtag.ai) — a knowledge graph extraction and query service. Feed it documents (URLs, text, PDFs), and it builds a structured knowledge graph you can query in natural language.
+The web dashboard for the [Hashtag.ai API](https://kg-api.hashtag.ai/docs) — a knowledge graph extraction and query service. Feed it documents (URLs, text, PDFs), and it builds a structured knowledge graph you can query in natural language.
+
+The dashboard is hosted at **https://kg-platform.hashtag.ai/dashboard**.
 
 > **Note:** This dashboard is vibe-coded (built primarily with [Claude Code](https://claude.ai/code)). This is a frontend only — the backend API is the core offering. See [Limitations](#limitations) before trying to run this yourself.
 
@@ -10,13 +12,13 @@ The web dashboard for [KG BaaS](https://hashtag.ai) — a knowledge graph extrac
 
 You can run this locally against the hosted backend by setting `VITE_API_URL=https://kg-api.hashtag.ai` in `.env.local` (see [Building from source](#building-from-source)). The Dockerfile uses the hosted backend by default.
 
-What doesn't work yet: **hosting on a custom domain**. The Auth0 login flow is currently locked to the official domain, so new users cannot sign up via a separately hosted instance. As a workaround you can bypass the login flow and hardcode an API key obtained from the hosted service — see [Hosting](#hosting).
+What doesn't work yet: **hosting on a third-party domain**. The Auth0 login flow is currently locked to the official domain, so new users cannot sign up via a separately hosted instance. As a workaround you can bypass the login flow and hardcode an API key obtained from the hosted service — see [Hosting](#hosting).
 
 A full self-hosting path (frontend + lightweight backend, with configurable auth) is planned for a future release.
 
 ---
 
-## What KG BaaS does
+## What the Hashtag.ai API does
 
 You POST a document to the `/process` endpoint. The backend extracts entities and relationships, builds a structured knowledge graph, and makes it queryable. You then POST natural-language questions to `/query` and get answers grounded in the graph.
 
@@ -34,7 +36,7 @@ curl -X POST https://kg-api.hashtag.ai/my-corpus/query \
   -d '{"question": "What are the main topics covered?"}'
 ```
 
-The hosted service is at **https://kg-api.hashtag.ai**.
+Full API documentation is at **https://kg-api.hashtag.ai/docs**.
 
 ---
 
@@ -58,7 +60,7 @@ React 18 · TypeScript · Vite · React Query · React Router · Radix UI · Tai
 
 ## Hosting
 
-Hosting on a custom domain won't work for new user signups — the Auth0 login flow is locked to the official domain. It is possible to work around this by modifying the login flow to hardcode an API key (or JWT) obtained from the hosted service, giving a single-user instance with no login screen, but this requires code changes rather than just configuration.
+Hosting on a a third-party domain won't work for new user signups — the Auth0 login flow is locked to the official domain. It is possible to work around this by modifying the login flow to hardcode an API key (or JWT) obtained from the hosted service, giving a single-user instance with no login screen, but this requires code changes rather than just configuration.
 
 ---
 
