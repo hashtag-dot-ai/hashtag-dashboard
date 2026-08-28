@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as Tabs from '@radix-ui/react-tabs';
 import { toast } from 'sonner';
-import { Trash2, Plus, Key, Link, Users, Network } from 'lucide-react';
+import { Trash2, Plus, Key, Link, Users, Network, Compass } from 'lucide-react';
 import { useToken } from '@/hooks/useToken';
 import { getProject, updateProject, deleteProject } from '@/api/projects';
 import { listKeys, createKey, revokeKey } from '@/api/keys';
@@ -14,6 +14,7 @@ import CopyButton from '@/components/CopyButton';
 import RawKeyModal from '@/components/RawKeyModal';
 import InviteLinkModal from '@/components/InviteLinkModal';
 import KGGraph from '@/components/KGGraph';
+import KGExplore from '@/components/explore/KGExplore';
 import type { KeyCreated, KeyType, InviteCreated } from '@/types/api';
 
 const KEY_TYPE_LABELS: Record<KeyType, string> = {
@@ -162,13 +163,14 @@ export default function ProjectDetail() {
   const processUrl = `${API_URL}/${apiId}/process`;
 
   const TABS = [
-    'overview', 'graph', 'keys', 'members', 'settings',
+    'overview', 'graph', 'explore', 'keys', 'members', 'settings',
     ...(project.is_owner ? ['danger'] : []),
   ];
 
   const TAB_LABEL: Record<string, string> = {
     overview: 'Overview',
     graph:    'Graph',
+    explore:  'Explore',
     keys:     'API Keys',
     members:  'Members',
     settings: 'Settings',
@@ -201,6 +203,7 @@ export default function ProjectDetail() {
               )}
             >
               {tab === 'graph' && <Network size={13} />}
+              {tab === 'explore' && <Compass size={13} />}
               {TAB_LABEL[tab]}
             </Tabs.Trigger>
           ))}
@@ -209,6 +212,11 @@ export default function ProjectDetail() {
         {/* Graph — no max-w constraint so the canvas can fill available width */}
         <Tabs.Content value="graph">
           <KGGraph apiId={apiId} />
+        </Tabs.Content>
+
+        {/* Explore — documents, chunks, and concepts alongside their subgraph */}
+        <Tabs.Content value="explore">
+          <KGExplore apiId={apiId} />
         </Tabs.Content>
 
         {/* Overview */}

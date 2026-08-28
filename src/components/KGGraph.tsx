@@ -3,7 +3,7 @@
  */
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, ZoomIn, ZoomOut, Maximize2, Key, Upload, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { RefreshCw, ZoomIn, ZoomOut, Maximize2, Upload, ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import { fetchGraph } from '@/api/graph';
 import { API_URL } from '@/config';
 import type { GraphInclude } from '@/types/api';
@@ -14,7 +14,8 @@ import { adaptToCytoscape } from '@/lib/graph/adapters/cytoscape';
 import type { GraphRendererHandle } from '@/lib/graph/types';
 import D3Renderer from '@/lib/graph/engines/D3Renderer';
 import CytoscapeRenderer from '@/lib/graph/engines/CytoscapeRenderer';
-import { useUser } from '@/context/UserContext';
+import ApiKeyGate from '@/components/ApiKeyGate';
+import { useProjectKey } from '@/hooks/useProjectKey';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,48 +99,6 @@ function LogRow({ entry, onToggle }: { entry: LogEntry; onToggle: () => void }) 
 }
 
 // ---------------------------------------------------------------------------
-// API-key gate
-// ---------------------------------------------------------------------------
-
-function ApiKeyGate({ tenantId, onConnect }: { tenantId: string; onConnect: (key: string) => void }) {
-  const [value, setValue] = useState('');
-  return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
-      <div className="w-12 h-12 rounded-full bg-indigo-50 flex items-center justify-center">
-        <Key size={22} className="text-indigo-500" />
-      </div>
-      <div>
-        <p className="font-semibold text-gray-800">Connect your API key</p>
-        <p className="text-sm text-gray-400 mt-1 max-w-xs">
-          Enter a project API key to explore the knowledge graph.
-          You can create one in the <strong>API Keys</strong> tab.
-        </p>
-      </div>
-      <div className="flex w-full max-w-sm gap-2">
-        <input
-          type="password"
-          value={value}
-          onChange={e => setValue(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && value && onConnect(value)}
-          placeholder={`${tenantId}_sk_…`}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
-        />
-        <button
-          onClick={() => value && onConnect(value)}
-          disabled={!value}
-          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        >
-          Connect
-        </button>
-      </div>
-      <p className="text-xs text-gray-400">
-        Keys are stored in session storage and cleared when you close the tab.
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -148,28 +107,14 @@ interface Props {
 }
 
 export default function KGGraph({ apiId }: Props) {
-  const SESSION_KEY = `kg_graph_key_${apiId}`;
-  const { user } = useUser();
-
   // management_key auto-connects; sessionStorage key is the manual fallback
-  const [sessionKey, setSessionKey] = useState<string>(() => sessionStorage.getItem(SESSION_KEY) ?? '');
-  const effectiveKey = user?.management_key || sessionKey;
-  const usingMgmtKey = !!user?.management_key;
+  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } = useProjectKey(apiId);
 
   const [include, setInclude] = useState<GraphInclude>('entities');
   const [engine,  setEngine]  = useState<Engine>('d3');
 
   const rendererRef  = useRef<GraphRendererHandle>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  function handleConnect(key: string) {
-    sessionStorage.setItem(SESSION_KEY, key);
-    setSessionKey(key);
-  }
-  function handleDisconnect() {
-    sessionStorage.removeItem(SESSION_KEY);
-    setSessionKey('');
-  }
 
   // Ingest form state
   const [inputMode, setInputMode] = useState<InputMode>('url');

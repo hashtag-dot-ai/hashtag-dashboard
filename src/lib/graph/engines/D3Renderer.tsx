@@ -13,15 +13,20 @@ import { nodeColor, nodeRadius, nodeDisplayName } from '../colors';
 
 interface Props {
   data: D3GraphData;
+  /** Optional: invoked when a node is clicked (not dragged). */
+  onNodeClick?: (node: D3Node) => void;
 }
 
 const D3Renderer = forwardRef<GraphRendererHandle, Props>(
-  function D3Renderer({ data }, ref) {
+  function D3Renderer({ data, onNodeClick }, ref) {
     const svgRef       = useRef<SVGSVGElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const tipRef       = useRef<HTMLDivElement>(null);
     const zoomRef      = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
     const simRef       = useRef<d3.Simulation<D3Node, D3Link> | null>(null);
+    // Ref so the graph isn't rebuilt when the callback identity changes.
+    const onNodeClickRef = useRef(onNodeClick);
+    onNodeClickRef.current = onNodeClick;
 
     // ---------------------------------------------------------------------------
     // Imperative handle — used by KGGraph's zoom buttons
@@ -196,6 +201,12 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
           d.fx = null; d.fy = null;
         });
       nodeSel.call(drag);
+
+      // --- Click (drag suppresses click via defaultPrevented) ---
+      nodeSel.on('click', (ev: MouseEvent, d) => {
+        if (ev.defaultPrevented) return;
+        onNodeClickRef.current?.(d);
+      });
 
       // --- Tooltip (D3-owned div, no React re-renders on mousemove) ---
       const tip = tipRef.current;

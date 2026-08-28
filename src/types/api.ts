@@ -130,3 +130,28 @@ export interface GraphResponse {
   nodes: GraphNode[];
   relationships: GraphRelationship[];
 }
+
+// Explore-tab types (GET /{apiId}/documents, /documents/{doc_id}/chunks)
+export interface DocumentSummary {
+  id: string;
+  status?: string | null;
+  created_at?: string | null;
+  total_chunks?: number | null;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentSummary[];
+}
+
+export interface ChunkItem {
+  id?: string | null;
+  text?: string | null;
+  position?: number | null;
+  page_number?: number | null;
+  element_type?: string | null;
+}
+
+export interface DocumentChunksResponse {
+  doc_id: string;
+  chunks: ChunkItem[];
+}
