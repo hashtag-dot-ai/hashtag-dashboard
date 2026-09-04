@@ -2,7 +2,7 @@
 
 The web dashboard for the [Hashtag.ai API](https://kg-api.hashtag.ai/docs) — a knowledge graph extraction and query service. Feed it documents (URLs, text, PDFs), and it builds a structured knowledge graph you can query in natural language.
 
-The dashboard is hosted at **https://kg-platform.hashtag.ai/dashboard**.
+The dashboard is hosted at: **https://kg-platform.hashtag.ai/dashboard**.
 
 > **Note:** This dashboard is vibe-coded (built primarily with [Claude Code](https://claude.ai/code)). This is a frontend only — the backend API is the core offering. See [Limitations](#limitations) before trying to run this yourself.
 
