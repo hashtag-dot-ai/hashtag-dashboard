@@ -155,7 +155,7 @@ export default function KGGraph({ apiId }: Props) {
       type = 'text'; url = textInput.trim();
     } else if (inputMode === 'url') {
       if (!urlInput.trim()) return;
-      type = 'url'; url = urlInput.trim();
+      type = 'web_url'; url = urlInput.trim();
     } else {
       if (!fileData) return;
       type = 'pdf'; url = fileData;

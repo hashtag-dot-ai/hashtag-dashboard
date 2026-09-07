@@ -27,7 +27,7 @@ You POST a document to the `/process` endpoint. The backend extracts entities an
 curl -X POST https://kg-api.hashtag.ai/my-corpus/process \
   -H "x-api-key: YOUR_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"type": "url", "url": "https://example.com/article"}'
+  -d '{"type": "web_url", "url": "https://example.com/article"}'
 
 # Query the graph
 curl -X POST https://kg-api.hashtag.ai/my-corpus/query \
@@ -163,7 +163,7 @@ Key types: `read_only` · `read_write` · `manage`
 curl -X POST https://kg-api.hashtag.ai/my-research/process \
   -H "x-api-key: $UK" \
   -H "Content-Type: application/json" \
-  -d '{"type": "url", "url": "https://example.com/article"}'
+  -d '{"type": "web_url", "url": "https://example.com/article"}'
 
 # Ingest plain text
 curl -X POST https://kg-api.hashtag.ai/my-research/process \
