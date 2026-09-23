@@ -10,6 +10,12 @@ import * as d3 from 'd3';
 import type { D3GraphData, D3Node, D3Link } from '../adapters/d3';
 import type { GraphRendererHandle } from '../types';
 import { nodeColor, nodeRadius, nodeDisplayName } from '../colors';
+import { tooltipHtml } from '../tooltip';
+
+const LINK_COLOR = '#e2e8f0';
+const LINK_HOVER_COLOR = '#6366f1';
+/** Invisible stroke width used to make thin edges easy to hover. */
+const LINK_HIT_WIDTH = 10;
 
 interface Props {
   data: D3GraphData;
@@ -93,9 +99,19 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
         .selectAll<SVGLineElement, D3Link>('line')
         .data(links)
         .join('line')
-        .attr('stroke', '#e2e8f0')
+        .attr('stroke', LINK_COLOR)
         .attr('stroke-width', 1.2)
         .attr('marker-end', 'url(#d3-arrow)');
+
+      // --- Link hit areas (wide invisible strokes so edges are hoverable) ---
+      const linkHitSel = g.append('g').attr('class', 'link-hits')
+        .selectAll<SVGLineElement, D3Link>('line')
+        .data(links)
+        .join('line')
+        .attr('stroke', 'transparent')
+        .attr('stroke-width', LINK_HIT_WIDTH)
+        .style('pointer-events', 'stroke')
+        .attr('cursor', 'default');
 
       // --- Edge labels ---
       const linkLabelSel = g.append('g').attr('class', 'link-labels')
@@ -155,6 +171,13 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
       simRef.current = sim;
 
       sim.on('tick', () => {
+        // Hit areas follow node centres exactly; visible lines are trimmed below.
+        linkHitSel
+          .attr('x1', d => (d.source as D3Node).x ?? 0)
+          .attr('y1', d => (d.source as D3Node).y ?? 0)
+          .attr('x2', d => (d.target as D3Node).x ?? 0)
+          .attr('y2', d => (d.target as D3Node).y ?? 0);
+
         // Trim lines to node edges so arrowheads sit flush against circles
         linkSel
           .attr('x1', d => {
@@ -210,32 +233,44 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
 
       // --- Tooltip (D3-owned div, no React re-renders on mousemove) ---
       const tip = tipRef.current;
+      const moveTip = (ev: MouseEvent) => {
+        if (!tip) return;
+        const rect = container.getBoundingClientRect();
+        tip.style.left = `${ev.clientX - rect.left + 14}px`;
+        tip.style.top  = `${ev.clientY - rect.top  - 14}px`;
+      };
+      const showTip = (ev: MouseEvent, html: string) => {
+        if (!tip) return;
+        tip.style.display = 'block';
+        moveTip(ev);
+        tip.innerHTML = html;
+      };
+      const hideTip = () => { if (tip) tip.style.display = 'none'; };
+
       nodeSel
-        .on('mouseover', (ev, d) => {
-          if (!tip) return;
-          const rect = container.getBoundingClientRect();
-          tip.style.display = 'block';
-          tip.style.left = `${ev.clientX - rect.left + 14}px`;
-          tip.style.top  = `${ev.clientY - rect.top  - 14}px`;
-          const props = Object.entries(d.properties)
-            .filter(([k]) => k !== 'embedding' && k !== 'text')
-            .slice(0, 10);
-          tip.innerHTML = `
-            <div class="font-semibold text-xs mb-1 text-gray-800">${d.labels.join(' · ')}</div>
-            ${props.map(([k, v]) =>
-              `<div class="text-xs text-gray-500 truncate">
-                <span class="text-gray-400">${k}:</span> ${String(v).slice(0, 60)}
-              </div>`,
-            ).join('')}
-          `;
+        .on('mouseover', (ev: MouseEvent, d) => {
+          showTip(ev, tooltipHtml({ title: d.labels.join(' · '), properties: d.properties }));
         })
-        .on('mousemove', ev => {
-          if (!tip) return;
-          const rect = container.getBoundingClientRect();
-          tip.style.left = `${ev.clientX - rect.left + 14}px`;
-          tip.style.top  = `${ev.clientY - rect.top  - 14}px`;
+        .on('mousemove', moveTip)
+        .on('mouseout', hideTip);
+
+      // Edge hover: highlight the visible line and show the relationship's properties.
+      linkHitSel
+        .on('mouseover', (ev: MouseEvent, d) => {
+          const s = d.source as D3Node, t = d.target as D3Node;
+          linkSel.filter(l => l === d).attr('stroke', LINK_HOVER_COLOR).attr('stroke-width', 2);
+          showTip(ev, tooltipHtml({
+            title: d.type,
+            subtitle: `${nodeDisplayName(s.labels, s.properties)} → ${nodeDisplayName(t.labels, t.properties)}`,
+            properties: d.properties,
+            emptyText: 'No properties',
+          }));
         })
-        .on('mouseout', () => { if (tip) tip.style.display = 'none'; });
+        .on('mousemove', moveTip)
+        .on('mouseout', (_ev, d) => {
+          linkSel.filter(l => l === d).attr('stroke', LINK_COLOR).attr('stroke-width', 1.2);
+          hideTip();
+        });
 
       return () => { sim.stop(); };
     }, [data]);

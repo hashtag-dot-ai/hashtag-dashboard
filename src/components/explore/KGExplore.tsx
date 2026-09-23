@@ -151,8 +151,8 @@ function ChunkCard({ chunk, prevText, onExploreGraph }: {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function KGExplore({ apiId }: { apiId: string }) {
-  const { effectiveKey, usingMgmtKey, connect, disconnect } = useProjectKey(apiId);
+export default function KGExplore({ apiId, preferSessionKey }: { apiId: string; preferSessionKey?: boolean }) {
+  const { effectiveKey, usingMgmtKey, connect, disconnect } = useProjectKey(apiId, { preferSessionKey });
 
   const [selection, setSelection] = useState<Selection | null>(null);
   const [search, setSearch] = useState('');

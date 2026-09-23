@@ -104,11 +104,14 @@ function LogRow({ entry, onToggle }: { entry: LogEntry; onToggle: () => void }) 
 
 interface Props {
   apiId: string;
+  /** Let a manually entered key override the management key (custom tenants). */
+  preferSessionKey?: boolean;
 }
 
-export default function KGGraph({ apiId }: Props) {
+export default function KGGraph({ apiId, preferSessionKey }: Props) {
   // management_key auto-connects; sessionStorage key is the manual fallback
-  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } = useProjectKey(apiId);
+  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } =
+    useProjectKey(apiId, { preferSessionKey });
 
   const [include, setInclude] = useState<GraphInclude>('entities');
   const [engine,  setEngine]  = useState<Engine>('d3');

@@ -1,10 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import Projects from '@/pages/Projects';
+import { STORAGE_KEY, addCustomTenant, listCustomTenants } from '@/lib/customTenants';
 
 describe('Projects page', () => {
+  beforeEach(() => {
+    localStorage.removeItem(STORAGE_KEY);
+  });
+
   it('renders the page heading', () => {
     renderWithProviders(<Projects />);
     expect(screen.getByText('Projects')).toBeInTheDocument();
@@ -70,5 +75,49 @@ describe('Projects page', () => {
     expect(screen.getByText('New project', { selector: 'h2' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Cancel/i }));
     expect(screen.queryByText('New project', { selector: 'h2' })).not.toBeInTheDocument();
+  });
+
+  describe('custom tenants', () => {
+    it('does not show the connected-tenants section when there are none', async () => {
+      renderWithProviders(<Projects />);
+      await waitFor(() => screen.getByText('my-project'));
+      expect(screen.queryByText(/Connected tenants/i)).not.toBeInTheDocument();
+    });
+
+    it('opens the connect form and disables Connect for invalid ids', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Projects />);
+      await user.click(screen.getByRole('button', { name: /Connect tenant/i }));
+      const input = screen.getByPlaceholderText(/hipporag_eval_musique50/i);
+      const connect = screen.getByRole('button', { name: /^Connect$/i });
+      expect(connect).toBeDisabled();
+      await user.type(input, 'bad id!');
+      expect(screen.getByText(/Only letters, numbers, hyphens and underscores/i)).toBeInTheDocument();
+      expect(connect).toBeDisabled();
+    });
+
+    it('adds a tenant, lists it, and links to its detail page', async () => {
+      const user = userEvent.setup();
+      renderWithProviders(<Projects />);
+      await user.click(screen.getByRole('button', { name: /Connect tenant/i }));
+      await user.type(screen.getByPlaceholderText(/hipporag_eval_musique50/i), 'hipporag_eval_multihop_v1_20260810');
+      await user.type(screen.getByPlaceholderText('MuSiQue 50 (v1 ANN)'), 'Multihop smoke');
+      await user.click(screen.getByRole('button', { name: /^Connect$/i }));
+
+      expect(listCustomTenants().map((t) => t.tenantId)).toEqual(['hipporag_eval_multihop_v1_20260810']);
+      expect(screen.getByText(/Connected tenants/i)).toBeInTheDocument();
+      expect(screen.getByText('Multihop smoke')).toBeInTheDocument();
+      const open = screen.getByRole('link', { name: /Open hipporag_eval_multihop_v1_20260810/i });
+      expect(open).toHaveAttribute('href', '/tenants/hipporag_eval_multihop_v1_20260810');
+      // form closes after connecting
+      expect(screen.queryByPlaceholderText(/hipporag_eval_musique50/i)).not.toBeInTheDocument();
+    });
+
+    it('lists tenants that were already stored', async () => {
+      addCustomTenant('atoresearch', 'ATO');
+      renderWithProviders(<Projects />);
+      expect(screen.getByText('ATO')).toBeInTheDocument();
+      expect(screen.getByText('atoresearch')).toBeInTheDocument();
+    });
   });
 });

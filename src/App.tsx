@@ -10,6 +10,7 @@ import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
 import Projects from '@/pages/Projects';
 import ProjectDetail from '@/pages/ProjectDetail';
+import TenantDetail from '@/pages/TenantDetail';
 import Billing from '@/pages/Billing';
 import AcceptInvite from '@/pages/AcceptInvite';
 
@@ -94,6 +95,7 @@ function AppRoutes() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/projects" element={<Projects />} />
         <Route path="/projects/:projectId" element={<ProjectDetail />} />
+        <Route path="/tenants/:tenantId" element={<TenantDetail />} />
         <Route path="/billing" element={<Billing />} />
       </Route>
     </Routes>

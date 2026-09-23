@@ -19,6 +19,8 @@ export interface D3Link extends d3.SimulationLinkDatum<D3Node> {
   id: string;
   /** Relationship type label, e.g. "WORKS_AT" */
   type: string;
+  /** Relationship properties as returned by the backend (shown on hover). */
+  properties: Record<string, unknown>;
 }
 
 export interface D3GraphData {
@@ -44,6 +46,7 @@ export function adaptToD3(response: GraphResponse): D3GraphData {
     .map(r => ({
       id: r.element_id,
       type: r.type,
+      properties: r.properties ?? {},
       // D3 resolves string ids → node objects after simulation.init()
       source: r.start_node_element_id,
       target: r.end_node_element_id,
