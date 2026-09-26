@@ -36,7 +36,7 @@ COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Startup hook: lets VITE_API_URL be overridden at runtime via an environment variable
-COPY --chmod=755 docker-entrypoint.d/40-app-config.sh /docker-entrypoint.d/
+COPY docker-entrypoint.d/40-app-config.sh /docker-entrypoint.d/
 
 # Expose port 8080
 EXPOSE 8080
