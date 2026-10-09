@@ -1,9 +1,12 @@
 /**
- * KGGraph — graph visualisation orchestrator with document ingestion and API log.
+ * KGGraph — graph visualisation orchestrator with document ingestion, natural-language
+ * querying, and API log.
  */
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCw, ZoomIn, ZoomOut, Maximize2, Upload, ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import {
+  RefreshCw, ZoomIn, ZoomOut, Maximize2, Upload, ChevronDown, ChevronUp, Plus, Send, MessageSquarePlus,
+} from 'lucide-react';
 import { fetchGraph } from '@/api/graph';
 import { API_URL } from '@/config';
 import type { GraphInclude } from '@/types/api';
@@ -16,6 +19,7 @@ import D3Renderer from '@/lib/graph/engines/D3Renderer';
 import CytoscapeRenderer from '@/lib/graph/engines/CytoscapeRenderer';
 import ApiKeyGate from '@/components/ApiKeyGate';
 import { useProjectKey } from '@/hooks/useProjectKey';
+import MarkdownBlock from '@/components/explore/MarkdownBlock';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -35,6 +39,65 @@ const ENGINE_LABELS: { value: Engine; label: string }[] = [
 ];
 
 type InputMode = 'url' | 'text' | 'pdf';
+
+// ---------------------------------------------------------------------------
+// Query panel
+// ---------------------------------------------------------------------------
+
+interface QueryTurn {
+  id: number;
+  question: string;
+  answer: string | null;
+  info: Record<string, unknown> | null;
+  error: string | null;
+}
+
+let _turnIdCounter = 0;
+
+const newSessionId = () => crypto.randomUUID();
+
+function QueryTurnView({ turn }: { turn: QueryTurn }) {
+  const [showInfo, setShowInfo] = useState(false);
+  const hasInfo = turn.info && Object.keys(turn.info).length > 0;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <div className="max-w-[85%] bg-indigo-600 text-white text-sm rounded-xl rounded-br-sm px-3 py-2 whitespace-pre-wrap break-words">
+          {turn.question}
+        </div>
+      </div>
+      <div className="max-w-[85%] bg-gray-50 border border-gray-200 rounded-xl rounded-bl-sm px-3 py-2">
+        {turn.error ? (
+          <p className="text-sm text-red-500">{turn.error}</p>
+        ) : turn.answer == null ? (
+          <div className="text-sm text-gray-400 flex items-center gap-2">
+            <RefreshCw size={13} className="animate-spin" />
+            Thinking…
+          </div>
+        ) : (
+          <MarkdownBlock text={turn.answer} />
+        )}
+        {hasInfo && (
+          <div className="mt-2 pt-2 border-t border-gray-200">
+            <button
+              onClick={() => setShowInfo(v => !v)}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showInfo ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              Details
+            </button>
+            {showInfo && (
+              <pre className="mt-1.5 bg-white border border-gray-200 rounded-lg p-2 overflow-x-auto text-xs font-mono text-gray-600 max-h-64">
+                {JSON.stringify(turn.info, null, 2)}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // API log
@@ -124,6 +187,13 @@ export default function KGGraph({ apiId }: Props) {
   const [fileData,  setFileData]  = useState('');
   const [ingesting, setIngesting] = useState(false);
 
+  // Query state — session_id threads follow-up questions into one conversation
+  const [question,  setQuestion]  = useState('');
+  const [querying,  setQuerying]  = useState(false);
+  const [turns,     setTurns]     = useState<QueryTurn[]>([]);
+  const [sessionId, setSessionId] = useState(newSessionId);
+  const turnsEndRef = useRef<HTMLDivElement>(null);
+
   // API call log
   const [log, setLog] = useState<LogEntry[]>([]);
 
@@ -192,6 +262,57 @@ export default function KGGraph({ apiId }: Props) {
     } finally {
       setIngesting(false);
     }
+  };
+
+  const updateTurn = (id: number, updates: Partial<QueryTurn>) =>
+    setTurns(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+
+  const handleQuery = async () => {
+    const q = question.trim();
+    if (!effectiveKey || !q || querying) return;
+
+    const turnId = ++_turnIdCounter;
+    setTurns(prev => [...prev, { id: turnId, question: q, answer: null, info: null, error: null }]);
+    setQuestion('');
+    requestAnimationFrame(() => turnsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+
+    const requestBody = JSON.stringify({ question: q, session_id: sessionId });
+    const logId = addLog({
+      method: 'POST',
+      endpoint: `/${apiId}/query`,
+      requestSummary: requestBody,
+      status: null,
+      responseSummary: null,
+      timestamp: new Date(),
+    });
+
+    setQuerying(true);
+    try {
+      const res = await fetch(`${API_URL}/${apiId}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': effectiveKey },
+        body: requestBody,
+      });
+      const body = await res.json().catch(() => ({}));
+      updateLog(logId, { status: res.status, responseSummary: JSON.stringify(body) });
+      if (res.ok) {
+        updateTurn(turnId, { answer: body.answer ?? '', info: body.info ?? null });
+      } else {
+        const detail = typeof body.detail === 'string' ? body.detail : `HTTP ${res.status}`;
+        updateTurn(turnId, { error: detail });
+      }
+    } catch (err) {
+      updateLog(logId, { status: 0, responseSummary: String(err) });
+      updateTurn(turnId, { error: String(err) });
+    } finally {
+      setQuerying(false);
+      requestAnimationFrame(() => turnsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+    }
+  };
+
+  const handleNewConversation = () => {
+    setTurns([]);
+    setSessionId(newSessionId());
   };
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -391,6 +512,56 @@ export default function KGGraph({ apiId }: Props) {
           ))}
         </div>
       )}
+
+      {/* Query panel */}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-gray-700">Ask the graph</h3>
+          {turns.length > 0 && (
+            <button
+              onClick={handleNewConversation}
+              disabled={querying}
+              className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-40"
+              title="Start a new conversation (clears follow-up context)"
+            >
+              <MessageSquarePlus size={13} />
+              New conversation
+            </button>
+          )}
+        </div>
+
+        {turns.length > 0 && (
+          <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
+            {turns.map(turn => <QueryTurnView key={turn.id} turn={turn} />)}
+            <div ref={turnsEndRef} />
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          <textarea
+            value={question}
+            onChange={e => setQuestion(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                handleQuery();
+              }
+            }}
+            rows={2}
+            placeholder={turns.length > 0 ? 'Ask a follow-up question…' : 'Ask a question about this knowledge graph…'}
+            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
+          />
+          <button
+            onClick={handleQuery}
+            disabled={querying || !question.trim()}
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {querying ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+            Ask
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">Enter to send · Shift+Enter for a new line</p>
+      </div>
 
       {/* Ingest panel */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
