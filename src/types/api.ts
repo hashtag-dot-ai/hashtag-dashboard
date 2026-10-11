@@ -155,3 +155,24 @@ export interface DocumentChunksResponse {
   doc_id: string;
   chunks: ChunkItem[];
 }
+
+// Search types (POST /{apiId}/search) — ranked passages, no LLM answer
+export interface SearchRequest {
+  question: string;
+  /** 1–100, server default 20 */
+  top_k?: number;
+}
+
+export interface SearchResult {
+  doc_id: string | null;
+  text: string;
+  score: number;
+  page_number?: number;
+}
+
+export interface SearchResponse {
+  /** Sorted by score, highest first. Empty = nothing matched or nothing ingested. */
+  results: SearchResult[];
+  /** retrieval_time is in seconds */
+  info: { top_k: number; retrieval_time: number };
+}

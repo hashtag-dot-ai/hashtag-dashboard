@@ -104,6 +104,12 @@ docker build \
 docker run -p 8080:8080 kg-frontend
 ```
 
+`VITE_API_URL` can also be overridden at runtime with an environment variable, without rebuilding; the container writes it to `/config.js` on startup:
+
+```bash
+docker run -p 8080:8080 -e VITE_API_URL=https://your-api.example.com kg-frontend
+```
+
 ---
 
 ## Testing
