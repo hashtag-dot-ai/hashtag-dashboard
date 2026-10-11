@@ -160,6 +160,7 @@ export default function ProjectDetail() {
 
   const apiId = project.compound_name ?? `id/${project.proj_perma_id ?? projectId}`;
   const queryUrl = `${API_URL}/${apiId}/query`;
+  const searchUrl = `${API_URL}/${apiId}/search`;
   const processUrl = `${API_URL}/${apiId}/process`;
 
   const TABS = [
@@ -252,6 +253,7 @@ export default function ProjectDetail() {
                 <div className="space-y-2 text-sm">
                   {[
                     { label: 'Query', url: queryUrl },
+                    { label: 'Search', url: searchUrl },
                     { label: 'Ingest', url: processUrl },
                   ].map(({ label, url }) => (
                     <div key={label} className="flex items-center gap-2">
