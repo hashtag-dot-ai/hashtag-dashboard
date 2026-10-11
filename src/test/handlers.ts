@@ -17,8 +17,8 @@ export const handlers = [
   // Projects
   http.get(`${BASE}/mgmt/projects/`, () =>
     HttpResponse.json([
-      { tenant_id: 'my-project', name: 'My Project', default_schema: null, default_prompt: null, is_owner: true },
-      { tenant_id: 'second-proj', name: 'Second Project', default_schema: null, default_prompt: null, is_owner: false },
+      { tenant_id: 'my-project', name: 'My Project', proj_display_name: 'My Project', default_schema: null, default_prompt: null, is_owner: true },
+      { tenant_id: 'second-proj', name: 'Second Project', proj_display_name: 'Second Project', default_schema: null, default_prompt: null, is_owner: false },
     ]),
   ),
 
@@ -31,9 +31,9 @@ export const handlers = [
   }),
 
   http.post(`${BASE}/mgmt/projects/`, async ({ request }) => {
-    const body = await request.json() as { name: string; tenant_id: string };
+    const body = await request.json() as { name?: string; proj_display_name?: string; tenant_id: string };
     return HttpResponse.json(
-      { tenant_id: body.tenant_id, name: body.name, default_schema: null, default_prompt: null, is_owner: true },
+      { tenant_id: body.tenant_id, name: body.name ?? body.proj_display_name, proj_display_name: body.proj_display_name ?? body.name, default_schema: null, default_prompt: null, is_owner: true },
       { status: 201 },
     );
   }),
@@ -41,7 +41,7 @@ export const handlers = [
   http.get(`${BASE}/mgmt/projects/:tenantId`, ({ params }) =>
     HttpResponse.json({
       tenant_id: params.tenantId,
-      name: 'My Project',
+      proj_display_name: 'My Project',
       default_schema: null,
       default_prompt: null,
       is_owner: true,
@@ -52,7 +52,7 @@ export const handlers = [
     const body = await request.json() as Record<string, unknown>;
     return HttpResponse.json({
       tenant_id: params.tenantId,
-      name: body.name ?? 'My Project',
+      proj_display_name: body.proj_display_name ?? 'My Project',
       default_schema: body.default_schema ?? null,
       default_prompt: body.default_prompt ?? null,
       is_owner: true,
@@ -109,6 +109,20 @@ export const handlers = [
       tenant_id: 'my-project',
       project_name: 'My Project',
       already_member: body.token === 'existing-token',
+    });
+  }),
+
+  // Knowledge API — search (ranked passages, no LLM answer)
+  http.post(`${BASE}/:owner/:slug/search`, async ({ request }) => {
+    const body = await request.json() as { question: string; top_k?: number };
+    const topK = body.top_k ?? 20;
+    return HttpResponse.json({
+      results: [
+        { doc_id: 'doc-alpha.pdf', text: 'Alpha passage about the question.', score: 0.9123, page_number: 3 },
+        { doc_id: 'doc-beta', text: 'Beta passage, less relevant.', score: 0.5 },
+        { doc_id: null, text: 'Orphan passage.', score: 0.1234 },
+      ].slice(0, topK),
+      info: { top_k: topK, retrieval_time: 0.234 },
     });
   }),
 

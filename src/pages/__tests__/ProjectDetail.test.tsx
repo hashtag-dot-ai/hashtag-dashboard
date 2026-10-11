@@ -8,7 +8,7 @@ describe('ProjectDetail page', () => {
   const renderDetail = () =>
     renderWithProviders(<ProjectDetail />, {
       initialPath: '/projects/my-project',
-      routePath: '/projects/:tenantId',
+      routePath: '/projects/:projectId',
     });
 
   it('renders the project name after loading', async () => {
@@ -33,10 +33,11 @@ describe('ProjectDetail page', () => {
   });
 
   describe('Overview tab', () => {
-    it('shows the query and process endpoint URLs', async () => {
+    it('shows the query, search and process endpoint URLs', async () => {
       renderDetail();
       await waitFor(() => screen.getByText('My Project'));
       expect(screen.getByText(/\/my-project\/query/)).toBeInTheDocument();
+      expect(screen.getByText(/\/my-project\/search/)).toBeInTheDocument();
       expect(screen.getByText(/\/my-project\/process/)).toBeInTheDocument();
     });
   });
