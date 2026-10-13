@@ -21,9 +21,11 @@ describe('CopyButton', () => {
 
   it('calls clipboard.writeText with the value on click', async () => {
     const user = userEvent.setup();
+    // userEvent.setup() installs its own clipboard stub, so spy on that one
+    const spy = vi.spyOn(navigator.clipboard, 'writeText');
     render(<CopyButton value="hello world" />);
     await user.click(screen.getByTitle('Copy to clipboard'));
-    expect(writeText).toHaveBeenCalledWith('hello world');
+    expect(spy).toHaveBeenCalledWith('hello world');
   });
 
   it('shows a check icon (green) after clicking', async () => {
