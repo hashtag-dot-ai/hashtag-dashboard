@@ -206,6 +206,7 @@ export default function KGGraph({ apiId }: Props) {
   // Search state — stateless; only the latest search is kept
   const [askMode,      setAskMode]      = useState<AskMode>('query');
   const [topK,         setTopK]         = useState<number | ''>(TOP_K_DEFAULT);
+  const [includeGraph, setIncludeGraph] = useState(true);
   const [searching,    setSearching]    = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
   const [searchError,  setSearchError]  = useState<string | null>(null);
@@ -244,7 +245,9 @@ export default function KGGraph({ apiId }: Props) {
       type = 'web_url'; url = urlInput.trim();
     } else {
       if (!fileData) return;
-      type = 'pdf'; url = fileData;
+      const ext = fileName.toLowerCase().split('.').pop();
+      type = ext === 'xlsx' || ext === 'xlsm' ? 'xlsx' : ext === 'csv' ? 'csv' : 'pdf';
+      url = fileData;
     }
 
     const endpoint = `${API_URL}/${apiId}/process`;
@@ -332,7 +335,7 @@ export default function KGGraph({ apiId }: Props) {
 
     const top_k = Math.min(TOP_K_MAX, Math.max(TOP_K_MIN, Math.round(Number(topK) || TOP_K_DEFAULT)));
     setTopK(top_k);
-    const requestBody = { question: q, top_k };
+    const requestBody = includeGraph ? { question: q, top_k, include_graph: true } : { question: q, top_k };
     const logId = addLog({
       method: 'POST',
       endpoint: `/${apiId}/search`,
@@ -601,7 +604,7 @@ export default function KGGraph({ apiId }: Props) {
           ) : searchError ? (
             <p className="text-sm text-red-500">{searchError}</p>
           ) : searchResult && (
-            <SearchResults response={searchResult} />
+            <SearchResults response={searchResult} engine={engine} />
           )
         )}
 
@@ -632,6 +635,17 @@ export default function KGGraph({ apiId }: Props) {
                 onChange={e => setTopK(e.target.value === '' ? '' : Number(e.target.value))}
                 className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
+            </label>
+          )}
+          {askMode === 'search' && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={includeGraph}
+                onChange={e => setIncludeGraph(e.target.checked)}
+                className="accent-indigo-600"
+              />
+              Include graph
             </label>
           )}
         </div>
@@ -680,7 +694,7 @@ export default function KGGraph({ apiId }: Props) {
                   inputMode === m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50',
                 )}
               >
-                {m.toUpperCase()}
+                {(m === 'pdf' ? 'file' : m).toUpperCase()}
               </button>
             ))}
           </div>
@@ -716,12 +730,12 @@ export default function KGGraph({ apiId }: Props) {
             {fileName ? (
               <p className="text-sm text-gray-700 font-medium">{fileName}</p>
             ) : (
-              <p className="text-sm text-gray-400">Click to upload a PDF</p>
+              <p className="text-sm text-gray-400">Click to upload a PDF or spreadsheet</p>
             )}
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.xlsx,.xlsm,.csv"
               className="hidden"
               onChange={handleFileChange}
             />

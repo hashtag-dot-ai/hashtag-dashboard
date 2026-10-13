@@ -8,17 +8,19 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import * as d3 from 'd3';
 import type { D3GraphData, D3Node, D3Link } from '../adapters/d3';
-import type { GraphRendererHandle } from '../types';
+import type { EdgeStyleFn, GraphRendererHandle } from '../types';
 import { nodeColor, nodeRadius, nodeDisplayName } from '../colors';
 
 interface Props {
   data: D3GraphData;
   /** Optional: invoked when a node is clicked (not dragged). */
   onNodeClick?: (node: D3Node) => void;
+  /** Optional per-edge overrides (label, width, colour). */
+  edgeStyle?: EdgeStyleFn;
 }
 
 const D3Renderer = forwardRef<GraphRendererHandle, Props>(
-  function D3Renderer({ data, onNodeClick }, ref) {
+  function D3Renderer({ data, onNodeClick, edgeStyle }, ref) {
     const svgRef       = useRef<SVGSVGElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const tipRef       = useRef<HTMLDivElement>(null);
@@ -27,6 +29,8 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
     // Ref so the graph isn't rebuilt when the callback identity changes.
     const onNodeClickRef = useRef(onNodeClick);
     onNodeClickRef.current = onNodeClick;
+    const edgeStyleRef = useRef(edgeStyle);
+    edgeStyleRef.current = edgeStyle;
 
     // ---------------------------------------------------------------------------
     // Imperative handle — used by KGGraph's zoom buttons
@@ -65,6 +69,7 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
       const H = container.clientHeight;
 
       const { nodes, links } = data;
+      const styleOf = (d: D3Link) => edgeStyleRef.current?.(d) ?? {};
 
       // --- SVG scaffold ---
       const svg = d3.select<SVGSVGElement, unknown>(svgRef.current);
@@ -93,8 +98,8 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
         .selectAll<SVGLineElement, D3Link>('line')
         .data(links)
         .join('line')
-        .attr('stroke', '#e2e8f0')
-        .attr('stroke-width', 1.2)
+        .attr('stroke', d => styleOf(d).color ?? '#e2e8f0')
+        .attr('stroke-width', d => styleOf(d).width ?? 1.2)
         .attr('marker-end', 'url(#d3-arrow)');
 
       // --- Edge labels ---
@@ -107,7 +112,7 @@ const D3Renderer = forwardRef<GraphRendererHandle, Props>(
         .attr('text-anchor', 'middle')
         .attr('dominant-baseline', 'central')
         .style('pointer-events', 'none')
-        .text(d => d.type);
+        .text(d => styleOf(d).label === false ? '' : d.type);
 
       // --- Node groups ---
       const showNodeLabels = nodes.length <= 200;

@@ -52,7 +52,7 @@ describe('KGGraph search playground', () => {
     await user.click(buttons[buttons.length - 1]);
 
     await waitFor(() => expect(screen.getByText('2 results · 0.23s')).toBeInTheDocument());
-    expect(sent).toEqual({ question: 'what is alpha?', top_k: 5 });
+    expect(sent).toEqual({ question: 'what is alpha?', top_k: 5, include_graph: true });
     expect(sentKey).toBe('hashtag-user-key-testkey1');
 
     const cards = screen.getAllByRole('listitem');
@@ -69,6 +69,58 @@ describe('KGGraph search playground', () => {
     // Logged in the API log, without any session id
     expect(screen.getByText('/alice/my-project/search')).toBeInTheDocument();
     expect(JSON.stringify(sent)).not.toContain('session_id');
+
+    // No graph in the response → no "Graph used" section
+    expect(screen.queryByRole('button', { name: /Graph used/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the graph used, with question-matched facts first and in bold', async () => {
+    // Default MSW handler returns a graph when include_graph is set
+    const user = userEvent.setup();
+    renderGraph();
+    await user.click(await screen.findByRole('button', { name: 'Search' }));
+    await user.type(screen.getByPlaceholderText(/Search for passages/i), 'what is alpha?{Enter}');
+
+    const toggle = await screen.findByRole('button', { name: /Graph used/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(toggle).toHaveTextContent('3 concepts · 2 facts');
+    expect(screen.queryByText('Alpha')).not.toBeInTheDocument();
+
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('button', { name: 'List' }));
+    for (const name of ['Alpha', 'Beta', 'Gamma']) {
+      expect(screen.getByText(name)).toBeInTheDocument();
+    }
+
+    const matched = screen.getByText('Alpha — DEPENDS_ON → Beta');
+    const other = screen.getByText('Beta — PART_OF → Gamma');
+    expect(matched).toHaveClass('font-semibold');
+    expect(other).not.toHaveClass('font-semibold');
+    // Matched fact comes first
+    expect(matched.compareDocumentPosition(other) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // MENTIONS edges are not listed as facts
+    expect(screen.queryByText(/MENTIONS/)).not.toBeInTheDocument();
+  });
+
+  it('omits include_graph when "Include graph" is unchecked', async () => {
+    let sent: unknown = null;
+    server.use(
+      http.post(`${BASE}/alice/my-project/search`, async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ results: [], info: { top_k: 20, retrieval_time: 0.01 } });
+      }),
+    );
+
+    const user = userEvent.setup();
+    renderGraph();
+    await user.click(await screen.findByRole('button', { name: 'Search' }));
+    const checkbox = screen.getByLabelText('Include graph');
+    expect(checkbox).toBeChecked();
+    await user.click(checkbox);
+    await user.type(screen.getByPlaceholderText(/Search for passages/i), 'anything{Enter}');
+
+    await waitFor(() => expect(sent).toEqual({ question: 'anything', top_k: 20 }));
   });
 
   it('shows the empty state for results: []', async () => {

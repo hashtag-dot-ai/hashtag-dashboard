@@ -8,3 +8,15 @@ export interface GraphRendererHandle {
   zoomOut: () => void;
   zoomReset: () => void;
 }
+
+export type GraphEngine = 'd3' | 'cytoscape';
+
+/** Per-edge visual overrides. Omitted fields keep the renderer's defaults. */
+export interface EdgeStyle {
+  /** false hides the relationship-type label */
+  label?: boolean;
+  width?: number;
+  color?: string;
+}
+
+export type EdgeStyleFn = (edge: { type: string; properties: Record<string, unknown> }) => EdgeStyle;
