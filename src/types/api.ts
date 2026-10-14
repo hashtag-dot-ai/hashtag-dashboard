@@ -179,6 +179,8 @@ export interface SearchRequest {
   question: string;
   /** 1–100, server default 20 */
   top_k?: number;
+  /** Also return the graph used to retrieve the results */
+  include_graph?: boolean;
 }
 
 export interface SearchResult {
@@ -186,6 +188,28 @@ export interface SearchResult {
   text: string;
   score: number;
   page_number?: number;
+  /** Present when include_graph was set */
+  chunk_id?: string;
+}
+
+export interface SearchGraphNode {
+  id: string;
+  type: 'chunk' | 'concept';
+  doc_id?: string;
+  name?: string;
+  seed_score?: number;
+}
+
+export interface SearchGraphRelationship {
+  source: string;
+  target: string;
+  type: string;
+  matched_question?: boolean;
+}
+
+export interface SearchGraph {
+  nodes: SearchGraphNode[];
+  relationships: SearchGraphRelationship[];
 }
 
 export interface SearchResponse {
@@ -193,4 +217,6 @@ export interface SearchResponse {
   results: SearchResult[];
   /** retrieval_time is in seconds */
   info: { top_k: number; retrieval_time: number };
+  /** Present when include_graph was set */
+  graph?: SearchGraph;
 }

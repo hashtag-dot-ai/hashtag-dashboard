@@ -8,11 +8,13 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import type { CyElements } from '../adapters/cytoscape';
-import type { GraphRendererHandle } from '../types';
+import type { EdgeStyleFn, GraphRendererHandle } from '../types';
 import { tooltipHtml } from '../tooltip';
 
 interface Props {
   elements: CyElements;
+  /** Optional per-edge overrides (label, width, colour). */
+  edgeStyle?: EdgeStyleFn;
 }
 
 /** Cytoscape data keys that are rendering internals, not graph properties. */
@@ -20,11 +22,13 @@ const NODE_INTERNAL_KEYS = ['color', 'size', 'label', 'labels', 'id'];
 const EDGE_INTERNAL_KEYS = ['id', 'source', 'target', 'label', 'type'];
 
 const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
-  function CytoscapeRenderer({ elements }, ref) {
+  function CytoscapeRenderer({ elements, edgeStyle }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tipRef       = useRef<HTMLDivElement>(null);
     const cyRef        = useRef<cytoscape.Core | null>(null);
     const layoutRef    = useRef<cytoscape.Layouts | null>(null);
+    const edgeStyleRef = useRef(edgeStyle);
+    edgeStyleRef.current = edgeStyle;
 
     // ---------------------------------------------------------------------------
     // Imperative handle — zoom buttons
@@ -198,6 +202,16 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
         nodeIdSet.has(e.data.source as string) &&
         nodeIdSet.has(e.data.target as string),
       ));
+
+      const styleFn = edgeStyleRef.current;
+      if (styleFn) {
+        cy.edges().forEach(edge => {
+          const s = styleFn({ type: edge.data('type'), properties: edge.data() });
+          if (s.label === false) edge.style('label', '');
+          if (s.width != null) edge.style('width', s.width);
+          if (s.color) edge.style('line-color', s.color);
+        });
+      }
 
       // animate: false runs the layout synchronously, avoiding rAF-after-destroy
       // crashes caused by React StrictMode's double-invocation of effects.

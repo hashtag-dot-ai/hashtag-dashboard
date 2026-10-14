@@ -12,5 +12,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
+    // MSW handlers mock localhost:8000; don't let a local .env point tests elsewhere
+    env: { VITE_API_URL: 'http://localhost:8000' },
   },
 })

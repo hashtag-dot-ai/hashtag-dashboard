@@ -6,6 +6,7 @@ export const KNOWN_COLORS: Record<string, string> = {
   Organization: '#10b981',
   Technology:   '#f59e0b',
   Concept:      '#8b5cf6',
+  Matched:      '#ef4444',
   Location:     '#06b6d4',
   Event:        '#f97316',
   Product:      '#ec4899',

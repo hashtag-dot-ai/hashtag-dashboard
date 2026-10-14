@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import Billing from '@/pages/Billing';
 
@@ -31,28 +30,10 @@ describe('Billing page', () => {
     });
   });
 
-  it('shows plan selector when "Change plan" is clicked', async () => {
-    const user = userEvent.setup();
+  it('shows a contact link for upgrades instead of a plan switcher', async () => {
     renderWithProviders(<Billing />);
-    await waitFor(() => screen.getByText('Change plan'));
-    await user.click(screen.getByText('Change plan'));
-    expect(screen.getByText('Business')).toBeInTheDocument();
-    expect(screen.getByText('Enterprise')).toBeInTheDocument();
-  });
-
-  it('switches plan when a new plan is selected and confirmed', async () => {
-    const user = userEvent.setup();
-    renderWithProviders(<Billing />);
-    await waitFor(() => screen.getByText('Change plan'));
-    await user.click(screen.getByText('Change plan'));
-
-    // Select Business plan
-    await user.click(screen.getByText('Business'));
-    await user.click(screen.getByRole('button', { name: /Switch plan/i }));
-
-    // After mutation, billing should update to business
-    await waitFor(() =>
-      expect(screen.getByText('Business')).toBeInTheDocument(),
-    );
+    const link = await screen.findByText('Contact anj@hashtag.ai');
+    expect(link).toHaveAttribute('href', 'mailto:anj@hashtag.ai');
+    expect(screen.queryByText('Change plan')).not.toBeInTheDocument();
   });
 });

@@ -143,15 +143,35 @@ export const handlers = [
 
   // Knowledge API — search (ranked passages, no LLM answer)
   http.post(`${BASE}/:owner/:slug/search`, async ({ request }) => {
-    const body = await request.json() as { question: string; top_k?: number };
+    const body = await request.json() as { question: string; top_k?: number; include_graph?: boolean };
     const topK = body.top_k ?? 20;
+    const results = [
+      { doc_id: 'doc-alpha.pdf', text: 'Alpha passage about the question.', score: 0.9123, page_number: 3, chunk_id: 'c1' },
+      { doc_id: 'doc-beta', text: 'Beta passage, less relevant.', score: 0.5, chunk_id: 'c2' },
+      { doc_id: null, text: 'Orphan passage.', score: 0.1234, chunk_id: 'c3' },
+    ].slice(0, topK);
+    if (!body.include_graph) {
+      return HttpResponse.json({
+        results: results.map(({ chunk_id: _, ...r }) => r),
+        info: { top_k: topK, retrieval_time: 0.234 },
+      });
+    }
     return HttpResponse.json({
-      results: [
-        { doc_id: 'doc-alpha.pdf', text: 'Alpha passage about the question.', score: 0.9123, page_number: 3 },
-        { doc_id: 'doc-beta', text: 'Beta passage, less relevant.', score: 0.5 },
-        { doc_id: null, text: 'Orphan passage.', score: 0.1234 },
-      ].slice(0, topK),
+      results,
       info: { top_k: topK, retrieval_time: 0.234 },
+      graph: {
+        nodes: [
+          { id: 'c1', type: 'chunk', doc_id: 'doc-alpha.pdf', seed_score: 0.9123 },
+          { id: 'k1', type: 'concept', name: 'Alpha' },
+          { id: 'k2', type: 'concept', name: 'Beta' },
+          { id: 'k3', type: 'concept', name: 'Gamma' },
+        ],
+        relationships: [
+          { source: 'c1', target: 'k1', type: 'MENTIONS' },
+          { source: 'k2', target: 'k3', type: 'PART_OF' },
+          { source: 'k1', target: 'k2', type: 'DEPENDS_ON', matched_question: true },
+        ],
+      },
     });
   }),
 
