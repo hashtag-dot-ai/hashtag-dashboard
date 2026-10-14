@@ -1,8 +1,11 @@
 import { mgmtRequest } from './client';
-import type { ProjectOut, ProjectCreate, ProjectUpdate, AvailabilityCheck } from '@/types/api';
+import type { ProjectOut, ProjectCreate, ProjectUpdate, AvailabilityCheck, AlgorithmOut } from '@/types/api';
 
 export const listProjects = (userKey?: string | null) =>
   mgmtRequest<ProjectOut[]>('/mgmt/projects/', {}, userKey);
+
+export const listAlgorithms = (userKey?: string | null) =>
+  mgmtRequest<AlgorithmOut[]>('/mgmt/projects/algorithms', {}, userKey);
 
 export const checkTenantId = (tenant_id: string, userKey?: string | null) =>
   mgmtRequest<AvailabilityCheck>(`/mgmt/projects/check/${encodeURIComponent(tenant_id)}`, {}, userKey);

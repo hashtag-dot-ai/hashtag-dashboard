@@ -162,6 +162,9 @@ export default function ProjectDetail() {
   const queryUrl = `${API_URL}/${apiId}/query`;
   const searchUrl = `${API_URL}/${apiId}/search`;
   const processUrl = `${API_URL}/${apiId}/process`;
+  // Not every algorithm has /search; the backend returns 400 for those.
+  // Older backends omit the flag, so treat a missing flag as supported.
+  const searchSupported = project.supports_search ?? true;
 
   const TABS = [
     'overview', 'graph', 'explore', 'keys', 'members', 'settings',
@@ -212,7 +215,7 @@ export default function ProjectDetail() {
 
         {/* Graph — no max-w constraint so the canvas can fill available width */}
         <Tabs.Content value="graph">
-          <KGGraph apiId={apiId} />
+          <KGGraph apiId={apiId} searchSupported={searchSupported} />
         </Tabs.Content>
 
         {/* Explore — documents, chunks, and concepts alongside their subgraph */}
@@ -253,7 +256,7 @@ export default function ProjectDetail() {
                 <div className="space-y-2 text-sm">
                   {[
                     { label: 'Query', url: queryUrl },
-                    { label: 'Search', url: searchUrl },
+                    ...(searchSupported ? [{ label: 'Search', url: searchUrl }] : []),
                     { label: 'Ingest', url: processUrl },
                   ].map(({ label, url }) => (
                     <div key={label} className="flex items-center gap-2">
@@ -484,6 +487,15 @@ export default function ProjectDetail() {
           <div className="max-w-3xl space-y-4">
             <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
               <h2 className="font-semibold text-gray-800">Project Settings</h2>
+              {project.algorithm_display_name && (
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-700">Version</label>
+                  <p className="text-sm text-gray-900" data-testid="project-algorithm">{project.algorithm_display_name}</p>
+                  <p className="text-xs text-gray-400">
+                    Fixed when the project was created. To use a different version, create a new project.
+                  </p>
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-sm font-medium text-gray-700">Display name</label>
                 <input

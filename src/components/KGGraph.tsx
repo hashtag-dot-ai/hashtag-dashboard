@@ -178,9 +178,11 @@ interface Props {
   apiId: string;
   /** Let a manually entered key override the management key (custom tenants). */
   preferSessionKey?: boolean;
+  /** False for projects whose algorithm has no /search (ProjectOut.supports_search). */
+  searchSupported?: boolean;
 }
 
-export default function KGGraph({ apiId, preferSessionKey }: Props) {
+export default function KGGraph({ apiId, preferSessionKey, searchSupported = true }: Props) {
   // management_key auto-connects; sessionStorage key is the manual fallback
   const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } =
     useProjectKey(apiId, { preferSessionKey });
@@ -615,9 +617,12 @@ export default function KGGraph({ apiId, preferSessionKey }: Props) {
                 key={m}
                 onClick={() => setAskMode(m)}
                 aria-pressed={askMode === m}
+                disabled={m === 'search' && !searchSupported}
+                title={m === 'search' && !searchSupported ? "Search isn't available for this project's version" : undefined}
                 className={cn(
                   'px-3 py-1 text-xs font-medium transition-colors border-r border-gray-200 last:border-0',
                   askMode === m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
                 )}
               >
                 {m === 'query' ? 'Query' : 'Search'}
