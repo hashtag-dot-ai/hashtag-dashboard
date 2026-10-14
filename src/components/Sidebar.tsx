@@ -5,17 +5,12 @@ import { API_URL } from '@/config';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/projects', label: 'Projects', icon: FolderKanban, also: ['/tenants'] },
+  { to: '/projects', label: 'Projects', icon: FolderKanban },
   { to: '/billing', label: 'Billing', icon: CreditCard },
 ];
 
 export default function Sidebar() {
   const { pathname } = useLocation();
-
-  const isActive = (to: string, also: string[] = []) =>
-    pathname === to ||
-    (to !== '/dashboard' && pathname.startsWith(to)) ||
-    also.some((prefix) => pathname.startsWith(prefix));
 
   return (
     <aside className="w-56 shrink-0 border-r border-gray-200 bg-white flex flex-col">
@@ -24,13 +19,13 @@ export default function Sidebar() {
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-0.5">
-        {navItems.map(({ to, label, icon: Icon, also }) => (
+        {navItems.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
             className={cn(
               'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-              isActive(to, also)
+              pathname === to || (to !== '/dashboard' && pathname.startsWith(to))
                 ? 'bg-indigo-50 text-indigo-700'
                 : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
             )}
