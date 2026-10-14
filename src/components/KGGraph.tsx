@@ -176,11 +176,14 @@ function LogRow({ entry, onToggle }: { entry: LogEntry; onToggle: () => void }) 
 
 interface Props {
   apiId: string;
+  /** False for projects whose algorithm has no /search (ProjectOut.supports_search). */
+  searchSupported?: boolean;
 }
 
-export default function KGGraph({ apiId }: Props) {
+export default function KGGraph({ apiId, searchSupported = true }: Props) {
   // management_key auto-connects; sessionStorage key is the manual fallback
-  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } = useProjectKey(apiId);
+  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } =
+    useProjectKey(apiId);
 
   const [include, setInclude] = useState<GraphInclude>('entities');
   const [engine,  setEngine]  = useState<Engine>('d3');
@@ -615,9 +618,12 @@ export default function KGGraph({ apiId }: Props) {
                 key={m}
                 onClick={() => setAskMode(m)}
                 aria-pressed={askMode === m}
+                disabled={m === 'search' && !searchSupported}
+                title={m === 'search' && !searchSupported ? "Search isn't available for this project's version" : undefined}
                 className={cn(
                   'px-3 py-1 text-xs font-medium transition-colors border-r border-gray-200 last:border-0',
                   askMode === m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
                 )}
               >
                 {m === 'query' ? 'Query' : 'Search'}

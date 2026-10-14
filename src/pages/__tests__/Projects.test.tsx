@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import Projects from '@/pages/Projects';
+import { MOCK_ALGORITHMS } from '@/test/handlers';
 
 describe('Projects page', () => {
   it('renders the page heading', () => {
@@ -28,6 +29,18 @@ describe('Projects page', () => {
     await user.click(screen.getByRole('button', { name: /New project/i }));
     expect(screen.getByPlaceholderText('My Project')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('my-project')).toBeInTheDocument();
+  });
+
+  it('offers every version from the server, defaulting to its default', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<Projects />);
+    await user.click(screen.getByRole('button', { name: /New project/i }));
+    const select = await screen.findByLabelText(/Version/i) as HTMLSelectElement;
+    await waitFor(() => expect(select.value).toBe(MOCK_ALGORITHMS.find((a) => a.is_default)!.algorithm));
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(MOCK_ALGORITHMS.map((a) => a.display_name));
+    const other = MOCK_ALGORITHMS.find((a) => !a.is_default)!;
+    await user.selectOptions(select, other.algorithm);
+    expect(select.value).toBe(other.algorithm);
   });
 
   it('auto-derives tenant_id from the name input', async () => {

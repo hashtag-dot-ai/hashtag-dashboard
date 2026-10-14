@@ -32,12 +32,30 @@ export interface ProjectOut {
   default_schema?: string | null;
   default_prompt?: string | null;
   is_owner: boolean;
+  /** Algorithm version, fixed at creation (one of GET /mgmt/projects/algorithms) */
+  algorithm?: string;
+  /** Product name of the algorithm version, e.g. 'Hashtag AI ver 2' */
+  algorithm_display_name?: string;
+  /** Whether this project's algorithm supports POST /{apiId}/search */
+  supports_search?: boolean;
+}
+
+/** An algorithm version a new project can use (GET /mgmt/projects/algorithms). */
+export interface AlgorithmOut {
+  /** Value to pass as ProjectCreate.algorithm */
+  algorithm: string;
+  display_name: string;
+  supports_search: boolean;
+  /** The version new projects get when none is given */
+  is_default: boolean;
 }
 
 export interface ProjectCreate {
   /** Human-readable display name (may contain spaces) */
   proj_display_name: string;
   tenant_id: string;
+  /** Algorithm version (AlgorithmOut.algorithm); omitted = the server's default. Cannot be changed later. */
+  algorithm?: string;
 }
 
 export interface ProjectUpdate {
