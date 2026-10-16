@@ -5,11 +5,12 @@
 import { useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  RefreshCw, ZoomIn, ZoomOut, Maximize2, Upload, ChevronDown, ChevronUp, Plus, Send, MessageSquarePlus,
+  RefreshCw, ZoomIn, ZoomOut, Maximize2, Upload, ChevronDown, ChevronUp, Plus, Send, MessageSquarePlus, Search,
 } from 'lucide-react';
 import { fetchGraph } from '@/api/graph';
+import { search, KgApiError } from '@/api/search';
 import { API_URL } from '@/config';
-import type { GraphInclude } from '@/types/api';
+import type { GraphInclude, SearchResponse } from '@/types/api';
 import { cn } from '@/lib/utils';
 import { nodeColor } from '@/lib/graph/colors';
 import { adaptToD3 } from '@/lib/graph/adapters/d3';
@@ -20,6 +21,7 @@ import CytoscapeRenderer from '@/lib/graph/engines/CytoscapeRenderer';
 import ApiKeyGate from '@/components/ApiKeyGate';
 import { useProjectKey } from '@/hooks/useProjectKey';
 import MarkdownBlock from '@/components/explore/MarkdownBlock';
+import SearchResults from '@/components/explore/SearchResults';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,6 +41,13 @@ const ENGINE_LABELS: { value: Engine; label: string }[] = [
 ];
 
 type InputMode = 'url' | 'text' | 'pdf';
+
+/** Query = LLM answer with follow-ups; Search = stateless ranked passages. */
+type AskMode = 'query' | 'search';
+
+const TOP_K_DEFAULT = 20;
+const TOP_K_MIN = 1;
+const TOP_K_MAX = 100;
 
 // ---------------------------------------------------------------------------
 // Query panel
@@ -167,11 +176,14 @@ function LogRow({ entry, onToggle }: { entry: LogEntry; onToggle: () => void }) 
 
 interface Props {
   apiId: string;
+  /** False for projects whose algorithm has no /search (ProjectOut.supports_search). */
+  searchSupported?: boolean;
 }
 
-export default function KGGraph({ apiId }: Props) {
+export default function KGGraph({ apiId, searchSupported = true }: Props) {
   // management_key auto-connects; sessionStorage key is the manual fallback
-  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } = useProjectKey(apiId);
+  const { effectiveKey, usingMgmtKey, connect: handleConnect, disconnect: handleDisconnect } =
+    useProjectKey(apiId);
 
   const [include, setInclude] = useState<GraphInclude>('entities');
   const [engine,  setEngine]  = useState<Engine>('d3');
@@ -193,6 +205,14 @@ export default function KGGraph({ apiId }: Props) {
   const [turns,     setTurns]     = useState<QueryTurn[]>([]);
   const [sessionId, setSessionId] = useState(newSessionId);
   const turnsEndRef = useRef<HTMLDivElement>(null);
+
+  // Search state — stateless; only the latest search is kept
+  const [askMode,      setAskMode]      = useState<AskMode>('query');
+  const [topK,         setTopK]         = useState<number | ''>(TOP_K_DEFAULT);
+  const [includeGraph, setIncludeGraph] = useState(true);
+  const [searching,    setSearching]    = useState(false);
+  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null);
+  const [searchError,  setSearchError]  = useState<string | null>(null);
 
   // API call log
   const [log, setLog] = useState<LogEntry[]>([]);
@@ -228,7 +248,9 @@ export default function KGGraph({ apiId }: Props) {
       type = 'web_url'; url = urlInput.trim();
     } else {
       if (!fileData) return;
-      type = 'pdf'; url = fileData;
+      const ext = fileName.toLowerCase().split('.').pop();
+      type = ext === 'xlsx' || ext === 'xlsm' ? 'xlsx' : ext === 'csv' ? 'csv' : 'pdf';
+      url = fileData;
     }
 
     const endpoint = `${API_URL}/${apiId}/process`;
@@ -309,6 +331,45 @@ export default function KGGraph({ apiId }: Props) {
       requestAnimationFrame(() => turnsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
     }
   };
+
+  const handleSearch = async () => {
+    const q = question.trim();
+    if (!effectiveKey || !q || searching) return;
+
+    const top_k = Math.min(TOP_K_MAX, Math.max(TOP_K_MIN, Math.round(Number(topK) || TOP_K_DEFAULT)));
+    setTopK(top_k);
+    const requestBody = includeGraph ? { question: q, top_k, include_graph: true } : { question: q, top_k };
+    const logId = addLog({
+      method: 'POST',
+      endpoint: `/${apiId}/search`,
+      requestSummary: JSON.stringify(requestBody),
+      status: null,
+      responseSummary: null,
+      timestamp: new Date(),
+    });
+
+    setSearching(true);
+    setSearchError(null);
+    try {
+      const body = await search(apiId, requestBody, effectiveKey);
+      updateLog(logId, { status: 200, responseSummary: JSON.stringify(body) });
+      setSearchResult(body);
+    } catch (err) {
+      if (err instanceof KgApiError) {
+        updateLog(logId, { status: err.status, responseSummary: JSON.stringify(err.body) });
+        setSearchError(err.message);
+      } else {
+        updateLog(logId, { status: 0, responseSummary: String(err) });
+        setSearchError(String(err));
+      }
+      setSearchResult(null);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleAsk = askMode === 'search' ? handleSearch : handleQuery;
+  const busy = askMode === 'search' ? searching : querying;
 
   const handleNewConversation = () => {
     setTurns([]);
@@ -517,7 +578,7 @@ export default function KGGraph({ apiId }: Props) {
       <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Ask the graph</h3>
-          {turns.length > 0 && (
+          {askMode === 'query' && turns.length > 0 && (
             <button
               onClick={handleNewConversation}
               disabled={querying}
@@ -530,12 +591,70 @@ export default function KGGraph({ apiId }: Props) {
           )}
         </div>
 
-        {turns.length > 0 && (
+        {askMode === 'query' && turns.length > 0 && (
           <div className="max-h-96 overflow-y-auto space-y-4 pr-1">
             {turns.map(turn => <QueryTurnView key={turn.id} turn={turn} />)}
             <div ref={turnsEndRef} />
           </div>
         )}
+
+        {askMode === 'search' && (
+          searching ? (
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              <RefreshCw size={13} className="animate-spin" />
+              Searching…
+            </div>
+          ) : searchError ? (
+            <p className="text-sm text-red-500">{searchError}</p>
+          ) : searchResult && (
+            <SearchResults response={searchResult} engine={engine} />
+          )
+        )}
+
+        <div className="flex items-center gap-3">
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+            {(['query', 'search'] as AskMode[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setAskMode(m)}
+                aria-pressed={askMode === m}
+                disabled={m === 'search' && !searchSupported}
+                title={m === 'search' && !searchSupported ? "Search isn't available for this project's version" : undefined}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium transition-colors border-r border-gray-200 last:border-0',
+                  askMode === m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50',
+                  'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+                )}
+              >
+                {m === 'query' ? 'Query' : 'Search'}
+              </button>
+            ))}
+          </div>
+          {askMode === 'search' && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500">
+              Top K
+              <input
+                type="number"
+                min={TOP_K_MIN}
+                max={TOP_K_MAX}
+                value={topK}
+                onChange={e => setTopK(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-16 border border-gray-300 rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+            </label>
+          )}
+          {askMode === 'search' && (
+            <label className="flex items-center gap-1.5 text-xs text-gray-500">
+              <input
+                type="checkbox"
+                checked={includeGraph}
+                onChange={e => setIncludeGraph(e.target.checked)}
+                className="accent-indigo-600"
+              />
+              Include graph
+            </label>
+          )}
+        </div>
 
         <div className="flex items-end gap-2">
           <textarea
@@ -544,20 +663,24 @@ export default function KGGraph({ apiId }: Props) {
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault();
-                handleQuery();
+                handleAsk();
               }
             }}
             rows={2}
-            placeholder={turns.length > 0 ? 'Ask a follow-up question…' : 'Ask a question about this knowledge graph…'}
+            placeholder={
+              askMode === 'search' ? 'Search for passages in this knowledge graph…'
+              : turns.length > 0 ? 'Ask a follow-up question…'
+              : 'Ask a question about this knowledge graph…'
+            }
             className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y"
           />
           <button
-            onClick={handleQuery}
-            disabled={querying || !question.trim()}
+            onClick={handleAsk}
+            disabled={busy || !question.trim()}
             className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            {querying ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
-            Ask
+            {busy ? <RefreshCw size={13} className="animate-spin" /> : askMode === 'search' ? <Search size={13} /> : <Send size={13} />}
+            {askMode === 'search' ? 'Search' : 'Ask'}
           </button>
         </div>
         <p className="text-xs text-gray-400">Enter to send · Shift+Enter for a new line</p>
@@ -577,7 +700,7 @@ export default function KGGraph({ apiId }: Props) {
                   inputMode === m ? 'bg-indigo-600 text-white' : 'text-gray-600 hover:bg-gray-50',
                 )}
               >
-                {m.toUpperCase()}
+                {(m === 'pdf' ? 'file' : m).toUpperCase()}
               </button>
             ))}
           </div>
@@ -613,12 +736,12 @@ export default function KGGraph({ apiId }: Props) {
             {fileName ? (
               <p className="text-sm text-gray-700 font-medium">{fileName}</p>
             ) : (
-              <p className="text-sm text-gray-400">Click to upload a PDF</p>
+              <p className="text-sm text-gray-400">Click to upload a PDF or spreadsheet</p>
             )}
             <input
               ref={fileInputRef}
               type="file"
-              accept=".pdf"
+              accept=".pdf,.xlsx,.xlsm,.csv"
               className="hidden"
               onChange={handleFileChange}
             />

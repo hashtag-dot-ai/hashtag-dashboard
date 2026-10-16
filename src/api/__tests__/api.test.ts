@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { me } from '@/api/auth';
-import { listProjects, checkTenantId, createProject } from '@/api/projects';
+import { listProjects, listAlgorithms, checkTenantId, createProject } from '@/api/projects';
+import { MOCK_ALGORITHMS } from '@/test/handlers';
 import { listKeys, createKey, revokeKey } from '@/api/keys';
 import { getBilling, setPlan } from '@/api/billing';
 import { ApiError } from '@/api/client';
@@ -42,6 +43,20 @@ describe('projects API', () => {
     expect(project.tenant_id).toBe('new-project');
     expect(project.name).toBe('New Project');
     expect(project.default_schema).toBeNull();
+  });
+
+  it('listAlgorithms() returns the server catalog with one default', async () => {
+    const algorithms = await listAlgorithms(null);
+    expect(algorithms).toEqual(MOCK_ALGORITHMS);
+    expect(algorithms.filter((a) => a.is_default)).toHaveLength(1);
+  });
+
+  it('createProject() sends the chosen algorithm and returns its display name', async () => {
+    const other = MOCK_ALGORITHMS.find((a) => !a.is_default)!;
+    const project = await createProject({ proj_display_name: 'Other', tenant_id: 'other', algorithm: other.algorithm }, null);
+    expect(project.algorithm).toBe(other.algorithm);
+    expect(project.algorithm_display_name).toBe(other.display_name);
+    expect(project.supports_search).toBe(other.supports_search);
   });
 });
 

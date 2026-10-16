@@ -3,12 +3,18 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { renderWithProviders } from '@/test/renderWithProviders';
 import ProjectDetail from '@/pages/ProjectDetail';
+import { MOCK_ALGORITHMS, NO_SEARCH_PROJECT } from '@/test/handlers';
 
 describe('ProjectDetail page', () => {
   const renderDetail = () =>
     renderWithProviders(<ProjectDetail />, {
       initialPath: '/projects/my-project',
-      routePath: '/projects/:tenantId',
+      routePath: '/projects/:projectId',
+    });
+  const renderNoSearch = () =>
+    renderWithProviders(<ProjectDetail />, {
+      initialPath: `/projects/${NO_SEARCH_PROJECT}`,
+      routePath: '/projects/:projectId',
     });
 
   it('renders the project name after loading', async () => {
@@ -33,11 +39,40 @@ describe('ProjectDetail page', () => {
   });
 
   describe('Overview tab', () => {
-    it('shows the query and process endpoint URLs', async () => {
+    it('shows the query, search and process endpoint URLs', async () => {
       renderDetail();
       await waitFor(() => screen.getByText('My Project'));
       expect(screen.getByText(/\/my-project\/query/)).toBeInTheDocument();
+      expect(screen.getByText(/\/my-project\/search/)).toBeInTheDocument();
       expect(screen.getByText(/\/my-project\/process/)).toBeInTheDocument();
+    });
+
+    it('hides the search endpoint when the project version does not support search', async () => {
+      renderNoSearch();
+      await waitFor(() => screen.getByText('My Project'));
+      expect(screen.getByText(/\/no-search-project\/query/)).toBeInTheDocument();
+      expect(screen.queryByText(/\/no-search-project\/search/)).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Settings tab version', () => {
+    it('shows the algorithm version read-only with a hint', async () => {
+      const user = userEvent.setup();
+      renderDetail();
+      await waitFor(() => screen.getByText('My Project'));
+      await user.click(screen.getByRole('tab', { name: /Settings/i }));
+      const defaultAlg = MOCK_ALGORITHMS.find((a) => a.is_default)!;
+      await waitFor(() => expect(screen.getByTestId('project-algorithm')).toHaveTextContent(defaultAlg.display_name));
+      expect(screen.getByText(/Fixed when the project was created/)).toBeInTheDocument();
+      expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    });
+
+    it("shows the project's own version, not the default", async () => {
+      const user = userEvent.setup();
+      renderNoSearch();
+      await waitFor(() => screen.getByText('My Project'));
+      await user.click(screen.getByRole('tab', { name: /Settings/i }));
+      await waitFor(() => expect(screen.getByTestId('project-algorithm')).toHaveTextContent('Hashtag AI ver 1'));
     });
   });
 

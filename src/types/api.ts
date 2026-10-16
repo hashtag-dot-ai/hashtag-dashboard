@@ -32,12 +32,30 @@ export interface ProjectOut {
   default_schema?: string | null;
   default_prompt?: string | null;
   is_owner: boolean;
+  /** Algorithm version, fixed at creation (one of GET /mgmt/projects/algorithms) */
+  algorithm?: string;
+  /** Product name of the algorithm version, e.g. 'Hashtag AI ver 2' */
+  algorithm_display_name?: string;
+  /** Whether this project's algorithm supports POST /{apiId}/search */
+  supports_search?: boolean;
+}
+
+/** An algorithm version a new project can use (GET /mgmt/projects/algorithms). */
+export interface AlgorithmOut {
+  /** Value to pass as ProjectCreate.algorithm */
+  algorithm: string;
+  display_name: string;
+  supports_search: boolean;
+  /** The version new projects get when none is given */
+  is_default: boolean;
 }
 
 export interface ProjectCreate {
   /** Human-readable display name (may contain spaces) */
   proj_display_name: string;
   tenant_id: string;
+  /** Algorithm version (AlgorithmOut.algorithm); omitted = the server's default. Cannot be changed later. */
+  algorithm?: string;
 }
 
 export interface ProjectUpdate {
@@ -154,4 +172,51 @@ export interface ChunkItem {
 export interface DocumentChunksResponse {
   doc_id: string;
   chunks: ChunkItem[];
+}
+
+// Search types (POST /{apiId}/search) — ranked passages, no LLM answer
+export interface SearchRequest {
+  question: string;
+  /** 1–100, server default 20 */
+  top_k?: number;
+  /** Also return the graph used to retrieve the results */
+  include_graph?: boolean;
+}
+
+export interface SearchResult {
+  doc_id: string | null;
+  text: string;
+  score: number;
+  page_number?: number;
+  /** Present when include_graph was set */
+  chunk_id?: string;
+}
+
+export interface SearchGraphNode {
+  id: string;
+  type: 'chunk' | 'concept';
+  doc_id?: string;
+  name?: string;
+  seed_score?: number;
+}
+
+export interface SearchGraphRelationship {
+  source: string;
+  target: string;
+  type: string;
+  matched_question?: boolean;
+}
+
+export interface SearchGraph {
+  nodes: SearchGraphNode[];
+  relationships: SearchGraphRelationship[];
+}
+
+export interface SearchResponse {
+  /** Sorted by score, highest first. Empty = nothing matched or nothing ingested. */
+  results: SearchResult[];
+  /** retrieval_time is in seconds */
+  info: { top_k: number; retrieval_time: number };
+  /** Present when include_graph was set */
+  graph?: SearchGraph;
 }

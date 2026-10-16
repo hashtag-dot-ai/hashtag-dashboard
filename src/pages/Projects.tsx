@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Plus, ArrowRight, Check, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useToken } from '@/hooks/useToken';
-import { listProjects, createProject, checkTenantId } from '@/api/projects';
+import { listProjects, listAlgorithms, createProject, checkTenantId } from '@/api/projects';
 import { cn } from '@/lib/utils';
 
 function slugify(s: string) {
@@ -21,6 +21,8 @@ export default function Projects() {
   const [name, setName] = useState('');
   const [tenantId, setTenantId] = useState('');
   const [tenantIdManual, setTenantIdManual] = useState(false);
+  // null = the server's default version (AlgorithmOut.is_default)
+  const [algorithm, setAlgorithm] = useState<string | null>(null);
   const [availability, setAvailability] = useState<{ available: boolean; reason?: string } | null>(null);
   const [checking, setChecking] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -30,10 +32,21 @@ export default function Projects() {
     queryFn: async () => listProjects(await getToken()),
   });
 
+  const { data: algorithms } = useQuery({
+    queryKey: ['algorithms'],
+    queryFn: async () => listAlgorithms(await getToken()),
+    enabled: showForm,
+  });
+  const selectedAlgorithm = algorithm ?? algorithms?.find((a) => a.is_default)?.algorithm ?? '';
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const token = await getToken();
-      return createProject({ proj_display_name: name.trim(), tenant_id: tenantId }, token);
+      return createProject({
+        proj_display_name: name.trim(),
+        tenant_id: tenantId,
+        ...(algorithm ? { algorithm } : {}),
+      }, token);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['projects'] });
@@ -42,6 +55,7 @@ export default function Projects() {
       setName('');
       setTenantId('');
       setTenantIdManual(false);
+      setAlgorithm(null);
       setAvailability(null);
     },
     onError: (err: Error) => toast.error(err.message),
@@ -140,6 +154,25 @@ export default function Projects() {
             )}
           </div>
 
+          {algorithms && algorithms.length > 1 && (
+            <div className="space-y-1">
+              <label htmlFor="project-algorithm" className="text-sm font-medium text-gray-700">
+                Version
+                <span className="text-gray-400 font-normal ml-1">— permanent, cannot be changed later</span>
+              </label>
+              <select
+                id="project-algorithm"
+                value={selectedAlgorithm}
+                onChange={(e) => setAlgorithm(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              >
+                {algorithms.map((a) => (
+                  <option key={a.algorithm} value={a.algorithm}>{a.display_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => createMutation.mutate()}
@@ -149,7 +182,7 @@ export default function Projects() {
               {createMutation.isPending ? 'Creating…' : 'Create project'}
             </button>
             <button
-              onClick={() => { setShowForm(false); setName(''); setTenantId(''); setTenantIdManual(false); setAvailability(null); }}
+              onClick={() => { setShowForm(false); setName(''); setTenantId(''); setTenantIdManual(false); setAlgorithm(null); setAvailability(null); }}
               className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
             >
               Cancel

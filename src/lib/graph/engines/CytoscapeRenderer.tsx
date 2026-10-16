@@ -8,18 +8,27 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import cytoscape from 'cytoscape';
 import type { CyElements } from '../adapters/cytoscape';
-import type { GraphRendererHandle } from '../types';
+import type { EdgeStyleFn, GraphRendererHandle } from '../types';
+import { tooltipHtml } from '../tooltip';
 
 interface Props {
   elements: CyElements;
+  /** Optional per-edge overrides (label, width, colour). */
+  edgeStyle?: EdgeStyleFn;
 }
 
+/** Cytoscape data keys that are rendering internals, not graph properties. */
+const NODE_INTERNAL_KEYS = ['color', 'size', 'label', 'labels', 'id'];
+const EDGE_INTERNAL_KEYS = ['id', 'source', 'target', 'label', 'type'];
+
 const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
-  function CytoscapeRenderer({ elements }, ref) {
+  function CytoscapeRenderer({ elements, edgeStyle }, ref) {
     const containerRef = useRef<HTMLDivElement>(null);
     const tipRef       = useRef<HTMLDivElement>(null);
     const cyRef        = useRef<cytoscape.Core | null>(null);
     const layoutRef    = useRef<cytoscape.Layouts | null>(null);
+    const edgeStyleRef = useRef(edgeStyle);
+    edgeStyleRef.current = edgeStyle;
 
     // ---------------------------------------------------------------------------
     // Imperative handle — zoom buttons
@@ -95,6 +104,15 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
               'border-width': 3,
             },
           },
+          {
+            selector: 'edge.hovered',
+            style: {
+              'width':              2,
+              'line-color':         '#6366f1',
+              'target-arrow-color': '#6366f1',
+              'color':              '#4f46e5',
+            },
+          },
         ],
         minZoom: 0.05,
         maxZoom: 5,
@@ -104,51 +122,51 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
 
       // --- Tooltip ---
       const tip = tipRef.current;
-      cy.on('mouseover', 'node', ev => {
-        if (!tip || !containerRef.current) return;
-        const node = ev.target;
-        const pos  = ev.renderedPosition;
-
-        tip.style.display = 'block';
-        tip.style.left    = `${pos.x + 14}px`;
-        tip.style.top     = `${pos.y - 14}px`;
-
-        // Collect node data, exclude large fields and cytoscape internals
-        const data = node.data();
-        const skip = new Set(['color', 'size', 'label', 'labels', 'id', 'embedding', 'text']);
-        const props = Object.entries(data as Record<string, unknown>)
-          .filter(([k]) => !skip.has(k))
-          .slice(0, 10);
-
-        const labelLine = Array.isArray(data.labels)
-          ? (data.labels as string[]).join(' · ')
-          : data.id;
-
-        tip.innerHTML = `
-          <div class="font-semibold text-xs mb-1 text-gray-800">${labelLine}</div>
-          ${props.map(([k, v]) =>
-            `<div class="text-xs text-gray-500 truncate">
-              <span class="text-gray-400">${k}:</span> ${String(v).slice(0, 60)}
-            </div>`,
-          ).join('')}
-        `;
-      });
-
-      cy.on('mousemove', 'node', ev => {
+      const moveTip = (pos: { x: number; y: number }) => {
         if (!tip) return;
-        const pos = ev.renderedPosition;
         tip.style.left = `${pos.x + 14}px`;
         tip.style.top  = `${pos.y - 14}px`;
+      };
+      const showTip = (pos: { x: number; y: number }, html: string) => {
+        if (!tip) return;
+        tip.style.display = 'block';
+        moveTip(pos);
+        tip.innerHTML = html;
+      };
+      const hideTip = () => { if (tip) tip.style.display = 'none'; };
+
+      cy.on('mouseover', 'node', ev => {
+        // Node data holds graph properties plus rendering internals; hide the latter.
+        const data = ev.target.data() as Record<string, unknown>;
+        const title = Array.isArray(data.labels)
+          ? (data.labels as string[]).join(' · ')
+          : String(data.id);
+        showTip(ev.renderedPosition, tooltipHtml({ title, properties: data, skip: NODE_INTERNAL_KEYS }));
       });
 
-      cy.on('mouseout', 'node', () => {
-        if (tip) tip.style.display = 'none';
+      cy.on('mouseover', 'edge', ev => {
+        const edge = ev.target as cytoscape.EdgeSingular;
+        edge.addClass('hovered');
+        const data = edge.data() as Record<string, unknown>;
+        showTip(ev.renderedPosition, tooltipHtml({
+          title: String(data.type ?? data.label ?? ''),
+          subtitle: `${edge.source().data('label')} → ${edge.target().data('label')}`,
+          properties: data,
+          skip: EDGE_INTERNAL_KEYS,
+          emptyText: 'No properties',
+        }));
+      });
+
+      cy.on('mousemove', 'node, edge', ev => moveTip(ev.renderedPosition));
+
+      cy.on('mouseout', 'node', hideTip);
+      cy.on('mouseout', 'edge', ev => {
+        (ev.target as cytoscape.EdgeSingular).removeClass('hovered');
+        hideTip();
       });
 
       // Hide tooltip when panning / zooming
-      cy.on('viewport', () => {
-        if (tip) tip.style.display = 'none';
-      });
+      cy.on('viewport', hideTip);
 
       return () => {
         layoutRef.current?.stop();
@@ -184,6 +202,16 @@ const CytoscapeRenderer = forwardRef<GraphRendererHandle, Props>(
         nodeIdSet.has(e.data.source as string) &&
         nodeIdSet.has(e.data.target as string),
       ));
+
+      const styleFn = edgeStyleRef.current;
+      if (styleFn) {
+        cy.edges().forEach(edge => {
+          const s = styleFn({ type: edge.data('type'), properties: edge.data() });
+          if (s.label === false) edge.style('label', '');
+          if (s.width != null) edge.style('width', s.width);
+          if (s.color) edge.style('line-color', s.color);
+        });
+      }
 
       // animate: false runs the layout synchronously, avoiding rAF-after-destroy
       // crashes caused by React StrictMode's double-invocation of effects.
